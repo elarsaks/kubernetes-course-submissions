@@ -1,0 +1,15 @@
+{
+    "name": "log_output",
+    "version": "1.1.0",
+    "description": "A simple app that logs a random UUID every 5 seconds",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "keywords": [
+        "kubernetes",
+        "logging"
+    ],
+    "author": "",
+    "license": "ISC"
+}
