@@ -22,17 +22,11 @@ permissions:
 
 jobs:
   release:
-    # Publish exercise release refs automatically after merge, or manually through workflow_dispatch.
+    # Publish exercise release refs automatically after exercise PR merges, or manually through workflow_dispatch.
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout release commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.merge_commit_sha }}
-          fetch-depth: 0
-
       - name: Extract exercise version
         id: version
         env:
@@ -42,13 +36,19 @@ jobs:
           if [ -n "$DISPATCH_VERSION" ]; then
             version="$DISPATCH_VERSION"
           else
-            # Find the first course exercise number in the PR title, such as 1.1 or 1.4.
-            version="$(printf '%s\n' "$PR_TITLE" | grep -Eo '[0-9]+\.[0-9]+' | head -n 1 || true)"
+            # Release only when the PR title starts with an exercise number, such as "1.3 Log output".
+            version="$(printf '%s\n' "$PR_TITLE" | sed -nE 's/^(Exercise[[:space:]]+)?([0-9]+\.[0-9]+)([[:space:]:-].*)?$/\2/p' | head -n 1)"
           fi
 
           if [ -z "$version" ]; then
-            echo "::error::Could not extract an exercise number like 1.1 from PR title: $PR_TITLE"
-            exit 1
+            if [ -n "$DISPATCH_VERSION" ]; then
+              echo "::error::Manual releases require an exercise version like 1.3"
+              exit 1
+            fi
+
+            echo "::notice::No exercise version at the start of PR title; skipping release publish."
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
           if ! printf '%s\n' "$version" | grep -Eq '^[0-9]+\.[0-9]+$'; then
@@ -57,8 +57,17 @@ jobs:
           fi
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "should_publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release commit
+        if: steps.version.outputs.should_publish == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
 
       - name: Publish exercise release branch and tag
+        if: steps.version.outputs.should_publish == 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -67,6 +76,7 @@ jobs:
           git push --force-with-lease origin refs/tags/"$VERSION":refs/tags/"$VERSION"
 
       - name: Publish GitHub release
+        if: steps.version.outputs.should_publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
