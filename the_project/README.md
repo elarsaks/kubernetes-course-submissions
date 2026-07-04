@@ -9,6 +9,8 @@ From the repository root, apply the declarative deployment and confirm the pod s
 ```bash
 kubectl apply -f the_project/manifests/deployment.yaml
 kubectl rollout status deployment/todo-app
+kubectl port-forward service/todo-app 3000:3000
+curl http://localhost:3000
 kubectl logs -f deployment/todo-app
 ```
 
@@ -77,8 +79,18 @@ kubectl apply -f the_project/manifests/deployment.yaml
 
 Confirm Kubernetes created the deployment:
 ```bash
-kubectl get deployments
+kubectl get deployments,services
 kubectl rollout status deployment/todo-app
+```
+
+Open the app locally:
+```bash
+kubectl port-forward service/todo-app 3000:3000
+```
+
+In another terminal, verify the response:
+```bash
+curl http://localhost:3000
 ```
 
 Follow the logs:
