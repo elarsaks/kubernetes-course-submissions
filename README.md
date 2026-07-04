@@ -6,7 +6,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 ## Exercises
 
 ### Chapter 2
-- [1.1. Log Output](https://github.com/elarsaks/kubernetes-course-submissions/tree/1-1/log_output)
+- [1.1. Log Output](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.1/log_output)
 
 ---
 
