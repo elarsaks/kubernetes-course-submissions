@@ -5,40 +5,77 @@ on:
     types: [closed]
     branches:
       - master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exercise version to publish, such as 1.2.
+        required: true
+        type: string
+      ref:
+        description: Commit, branch, or tag to publish.
+        required: true
+        default: master
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   release:
-    # Only publish an exercise release branch when a pull request is merged into master.
-    if: github.event.pull_request.merged == true
+    # Publish exercise release refs automatically after merge, or manually through workflow_dispatch.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout merged commit
+      - name: Checkout release commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
 
       - name: Extract exercise version
         id: version
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+          DISPATCH_VERSION: ${{ inputs.version }}
         run: |
-          # Find the first course exercise number in the PR title, such as 1.1 or 1.4.
-          version="$(printf '%s\n' "$PR_TITLE" | grep -Eo '[0-9]+\.[0-9]+' | head -n 1 || true)"
+          if [ -n "$DISPATCH_VERSION" ]; then
+            version="$DISPATCH_VERSION"
+          else
+            # Find the first course exercise number in the PR title, such as 1.1 or 1.4.
+            version="$(printf '%s\n' "$PR_TITLE" | grep -Eo '[0-9]+\.[0-9]+' | head -n 1 || true)"
+          fi
 
           if [ -z "$version" ]; then
             echo "::error::Could not extract an exercise number like 1.1 from PR title: $PR_TITLE"
             exit 1
           fi
 
+          if ! printf '%s\n' "$version" | grep -Eq '^[0-9]+\.[0-9]+$'; then
+            echo "::error::Invalid exercise version: $version"
+            exit 1
+          fi
+
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Publish exercise release branch
+      - name: Publish exercise release branch and tag
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          git tag --force "$VERSION" HEAD
           git push --force-with-lease origin HEAD:refs/heads/"$VERSION"
+          git push --force-with-lease origin refs/tags/"$VERSION":refs/tags/"$VERSION"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          title="Exercise $VERSION"
+          notes="DevOps with Kubernetes exercise $VERSION submission."
+
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            gh release edit "$VERSION" --title "$title" --notes "$notes"
+          else
+            gh release create "$VERSION" --title "$title" --notes "$notes"
+          fi
