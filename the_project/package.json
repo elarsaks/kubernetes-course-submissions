@@ -1,0 +1,10 @@
+{
+    "name": "todo-app",
+    "version": "1.0.0",
+    "description": "Exercise 1.2 web server",
+    "main": "todo-app/server.js",
+    "scripts": {
+        "start": "node todo-app/server.js"
+    },
+    "license": "MIT"
+}
