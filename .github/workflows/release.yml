@@ -65,3 +65,17 @@ jobs:
           git tag --force "$VERSION" HEAD
           git push --force-with-lease origin HEAD:refs/heads/"$VERSION"
           git push --force-with-lease origin refs/tags/"$VERSION":refs/tags/"$VERSION"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          title="Exercise $VERSION"
+          notes="DevOps with Kubernetes exercise $VERSION submission."
+
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            gh release edit "$VERSION" --title "$title" --notes "$notes"
+          else
+            gh release create "$VERSION" --title "$title" --notes "$notes"
+          fi
