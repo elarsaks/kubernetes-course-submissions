@@ -9,6 +9,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [1.1. Log Output](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.1/log_output)
 - [1.2. Todo App](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.2/the_project)
 - [1.3. Log Output Declarative Deployment](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.3/log_output)
+- [1.4. Todo App Declarative Deployment](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.4/the_project)
 
 ---
 
