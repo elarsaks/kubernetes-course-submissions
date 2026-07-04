@@ -1,7 +1,16 @@
-# Exercise 1.2 – Todo App (Step 1)
+# Exercises 1.2 & 1.4 - Todo App
 
 ## Overview
-This exercise delivers the initial Todo App server. It starts an HTTP server that logs `Server started in port NNNN` on boot and responds with `Todo app coming soon`. The listening port is configurable via the `PORT` environment variable.
+These exercises deliver the initial Todo App server and its declarative Kubernetes deployment. The app starts an HTTP server that logs `Server started in port NNNN` on boot and responds with `Todo app coming soon`. The listening port is configurable via the `PORT` environment variable.
+
+## For Course Graders
+
+From the repository root, apply the declarative deployment and confirm the pod starts:
+```bash
+kubectl apply -f the_project/manifests/deployment.yaml
+kubectl rollout status deployment/todo-app
+kubectl logs -f deployment/todo-app
+```
 
 ## Application Structure
 
@@ -9,6 +18,7 @@ This exercise delivers the initial Todo App server. It starts an HTTP server tha
 - `todo-app/server.js` – Node.js HTTP server implementation
 - `package.json` – Project metadata and start script
 - `Dockerfile` – Container build definition
+- `manifests/deployment.yaml` – Declarative Kubernetes deployment definition
 
 ### Application Code (`todo-app/server.js`)
 ```javascript
@@ -58,10 +68,34 @@ Example output:
 Server started in port 3000
 ```
 
+## Kubernetes Deployment
+
+Deploy the Todo app using the declarative manifest:
+```bash
+kubectl apply -f the_project/manifests/deployment.yaml
+```
+
+Confirm Kubernetes created the deployment:
+```bash
+kubectl get deployments
+kubectl rollout status deployment/todo-app
+```
+
+Follow the logs:
+```bash
+kubectl logs -f deployment/todo-app
+```
+
 ## Configuration
-- `PORT` – HTTP port exposed by the app (defaults to `3000`). Set the environment variable when running the container to change it.
+- `PORT` – HTTP port exposed by the app (defaults to `3000`). Set the environment variable when running the container or in the deployment manifest to change it.
 
 ## Why Use Docker Hub?
 - **Registry access**: Kubernetes pulls the image directly from Docker Hub.
 - **Reproducibility**: Matches real-world workflows for sharing container images.
 - **Course requirement**: Aligns with the DevOps with Kubernetes MOOC expectations.
+
+## Cleanup
+Remove the deployment when finished:
+```bash
+kubectl delete -f the_project/manifests/deployment.yaml
+```
