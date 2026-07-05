@@ -5,7 +5,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install --omit=dev
 
-COPY todo-app ./todo-app
+COPY app ./app
 
 ENV NODE_ENV=production
 ENV PORT=3000
