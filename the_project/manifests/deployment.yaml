@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: the-project
-          image: elarsaks/the-project:1.6.0
+          image: elarsaks/the-project:1.8.0
           imagePullPolicy: IfNotPresent
           env:
             - name: PORT
@@ -27,10 +27,25 @@ kind: Service
 metadata:
   name: the-project
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: the-project
   ports:
     - port: 3000
       targetPort: 3000
-      nodePort: 30080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: the-project
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: the-project
+                port:
+                  number: 3000

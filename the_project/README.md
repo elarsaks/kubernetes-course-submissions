@@ -1,6 +1,6 @@
-# Exercise 1.6 - The Project
+# Exercise 1.8 - The Project
 
-Minimal Node.js HTTP server for DevOps with Kubernetes exercises 1.5 and 1.6.
+Minimal Node.js HTTP server for DevOps with Kubernetes exercises 1.5, 1.6, and 1.8.
 
 ## Behavior
 
@@ -17,13 +17,13 @@ The application hash is created once when the process starts. The request hash i
 ## Build
 
 ```bash
-docker build -t elarsaks/the-project:1.6.0 .
+docker build -t elarsaks/the-project:1.8.0 .
 ```
 
 If using k3d:
 
 ```bash
-k3d image import elarsaks/the-project:1.6.0
+k3d image import elarsaks/the-project:1.8.0
 ```
 
 ## Deploy
@@ -35,16 +35,23 @@ kubectl get pods -l app=the-project
 
 ## Test
 
-Exercise 1.6 exposes the app through a NodePort Service.
+Exercise 1.8 exposes the app through Ingress.
 
 ```bash
 kubectl get service the-project
+kubectl get ingress the-project
+```
+
+If your k3d cluster does not expose the Ingress controller yet, add a local port mapping:
+
+```bash
+k3d cluster edit k3s-default --port-add 8081:80@loadbalancer
 ```
 
 Open:
 
 ```text
-http://localhost:30080/
+http://localhost:8081/
 ```
 
 ## Cleanup
