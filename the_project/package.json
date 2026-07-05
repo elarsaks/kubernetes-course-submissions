@@ -1,10 +1,10 @@
 {
-    "name": "todo-app",
+    "name": "the-project",
     "version": "1.0.0",
-    "description": "Exercise 1.2 web server",
-    "main": "todo-app/server.js",
+    "description": "DevOps with Kubernetes exercise 1.5 app",
+    "main": "app/index.js",
     "scripts": {
-        "start": "node todo-app/server.js"
+        "start": "node app/index.js"
     },
     "license": "MIT"
 }

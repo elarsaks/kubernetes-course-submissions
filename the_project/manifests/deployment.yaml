@@ -1,20 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: todo-app
+  name: the-project
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: todo-app
+      app: the-project
   template:
     metadata:
       labels:
-        app: todo-app
+        app: the-project
     spec:
       containers:
-        - name: todo-app
-          image: elarsaks/todo-app:1.0.0
+        - name: the-project
+          image: elarsaks/the-project:1.5.0
+          imagePullPolicy: IfNotPresent
           env:
             - name: PORT
               value: "3000"
@@ -24,10 +25,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: todo-app
+  name: the-project
 spec:
   selector:
-    app: todo-app
+    app: the-project
   ports:
     - port: 3000
       targetPort: 3000
