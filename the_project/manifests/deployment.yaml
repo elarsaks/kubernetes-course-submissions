@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: the-project
-          image: elarsaks/the-project:1.5.0
+          image: elarsaks/the-project:1.6.0
           imagePullPolicy: IfNotPresent
           env:
             - name: PORT
@@ -27,8 +27,10 @@ kind: Service
 metadata:
   name: the-project
 spec:
+  type: NodePort
   selector:
     app: the-project
   ports:
     - port: 3000
       targetPort: 3000
+      nodePort: 30080

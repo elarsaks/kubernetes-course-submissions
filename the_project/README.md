@@ -1,6 +1,6 @@
-# Exercise 1.5 - The Project
+# Exercise 1.6 - The Project
 
-Minimal Node.js HTTP server for DevOps with Kubernetes exercise 1.5.
+Minimal Node.js HTTP server for DevOps with Kubernetes exercises 1.5 and 1.6.
 
 ## Behavior
 
@@ -17,13 +17,13 @@ The application hash is created once when the process starts. The request hash i
 ## Build
 
 ```bash
-docker build -t elarsaks/the-project:1.5.0 .
+docker build -t elarsaks/the-project:1.6.0 .
 ```
 
 If using k3d:
 
 ```bash
-k3d image import elarsaks/the-project:1.5.0
+k3d image import elarsaks/the-project:1.6.0
 ```
 
 ## Deploy
@@ -35,14 +35,16 @@ kubectl get pods -l app=the-project
 
 ## Test
 
+Exercise 1.6 exposes the app through a NodePort Service.
+
 ```bash
-kubectl port-forward <pod-name> 3003:3000
+kubectl get service the-project
 ```
 
 Open:
 
 ```text
-http://localhost:3003/
+http://localhost:30080/
 ```
 
 ## Cleanup
