@@ -16,23 +16,23 @@ This repository is used for DevOps with Kubernetes course submissions.
 The workflow only creates an exercise release when the merged PR title starts with an exercise number:
 
 ```text
-1.5 The Project: Kubernetes Port Forward
+<exercise-number> <exercise title>
 ```
 
 Accepted title forms include:
 
 ```text
-1.5 Exercise title
-Exercise 1.5 Exercise title
-1.5: Exercise title
-1.5 - Exercise title
+<exercise-number> Exercise title
+Exercise <exercise-number> Exercise title
+<exercise-number>: Exercise title
+<exercise-number> - Exercise title
 ```
 
 When the title matches, the workflow publishes:
 
-- branch `1.5`
-- tag `1.5`
-- GitHub Release `1.5`
+- branch `<exercise-number>`
+- tag `<exercise-number>`
+- GitHub Release `<exercise-number>`
 
 The course submission URL should point to the generated release or exercise branch, depending on what the exercise asks for.
 
@@ -46,11 +46,11 @@ The course submission URL should point to the generated release or exercise bran
 6. Open a PR whose title starts with the exercise number when a release should be generated.
 7. After merging, confirm the release workflow completed and use the generated URL for submission.
 
-## Current Exercise 1.5 Shape
+## Project App Shape
 
-Exercise 1.5 uses `the_project/`.
+The Project exercises use `the_project/`.
 
-The app is a minimal Node.js HTTP server in `the_project/app/index.js`.
+The app is a minimal Node.js HTTP server in `the_project/app/index.js`. Keep the image tag, Kubernetes manifest, app README, and root README aligned with the current exercise.
 
 Expected behavior:
 
@@ -58,4 +58,4 @@ Expected behavior:
 Application <startup-random-hash>. Request <request-random-hash>
 ```
 
-The Kubernetes manifest deploys `elarsaks/the-project:1.5.0` and exposes container port `3000`.
+The Kubernetes manifest should deploy the current exercise image, expose container port `3000`, and use the Service type required by the exercise instructions.
