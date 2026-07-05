@@ -12,6 +12,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [1.4. Todo App Declarative Deployment](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.4/the_project)
 - [1.5. The Project: Kubernetes Port Forward](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.5/the_project)
 - [1.6. The Project: NodePort Service](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.6/the_project)
+- [1.7. Log Output Ingress](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.7/log_output)
 
 ---
 

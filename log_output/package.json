@@ -1,7 +1,7 @@
 {
     "name": "log_output",
-    "version": "1.1.0",
-    "description": "A simple app that logs a random UUID every 5 seconds",
+    "version": "1.7.0",
+    "description": "A simple app that logs and serves a random UUID with timestamps",
     "main": "index.js",
     "scripts": {
         "start": "node index.js"

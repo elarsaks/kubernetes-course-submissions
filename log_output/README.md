@@ -1,7 +1,7 @@
-# Exercise 1.1 & 1.3 - Log Output Application
+# Exercise 1.1, 1.3 & 1.7 - Log Output Application
 
 ## Overview
-This exercise demonstrates creating a simple Node.js application that generates a random UUID on startup and logs it every 5 seconds, then deploying it to a local Kubernetes cluster using k3d.
+This exercise demonstrates creating a simple Node.js application that generates a random UUID on startup, logs it every 5 seconds, and exposes the current timestamp plus UUID through an HTTP endpoint and Kubernetes Ingress.
 
 ## For Course Graders
 
@@ -12,7 +12,13 @@ kubectl rollout restart deployment/log-output
 kubectl logs -f deployment/log-output
 ```
 
-This ensures the deployment is managed declaratively and that the pod is emitting log lines.
+Then open the application through the cluster Ingress:
+```bash
+curl http://localhost:8081/
+curl http://localhost:8081/status
+```
+
+This ensures the deployment is managed declaratively, the pod is emitting log lines, and the current status is reachable through the browser.
 
 ## Application Structure
 
@@ -20,17 +26,37 @@ This ensures the deployment is managed declaratively and that the pod is emittin
 - `index.js` - Main application that generates and logs a UUID
 - `package.json` - Node.js project configuration
 - `Dockerfile` - Container image definition
-- `manifests/deployment.yaml` - Declarative Kubernetes deployment definition
+- `manifests/deployment.yaml` - Declarative Kubernetes deployment, service, and ingress definition
 
 ### Application Code (`index.js`)
 ```javascript
-const crypto = require("crypto");
+const http = require("node:http");
+const crypto = require("node:crypto");
 
 const id = crypto.randomUUID();
+const port = Number.parseInt(process.env.PORT ?? "", 10) || 3000;
+
 console.log("App started. Stored value:", id);
 
+const getStatus = () => `${new Date().toISOString()}: ${id}\n`;
+
+const server = http.createServer((req, res) => {
+  if (req.method !== "GET" || (req.url !== "/" && req.url !== "/status")) {
+    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("Not found\n");
+    return;
+  }
+
+  res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+  res.end(getStatus());
+});
+
+server.listen(port, () => {
+  console.log(`Server started in port ${port}`);
+});
+
 setInterval(() => {
-  console.log(`${new Date().toISOString()}: ${id}`);
+  console.log(getStatus().trimEnd());
 }, 5000);
 ```
 
@@ -38,6 +64,7 @@ The application:
 - Generates ONE random UUID on startup using `crypto.randomUUID()`
 - Stores the UUID in memory
 - Prints the same UUID every 5 seconds with an ISO timestamp
+- Serves the current timestamp and UUID at `/` and `/status`
 
 ## Deployment Steps (Full Workflow)
 
@@ -51,8 +78,13 @@ k3d cluster start k3s-default
 
 If the cluster does not exist yet, create it:
 ```bash
-k3d cluster create k3s-default
+k3d cluster create k3s-default --port 8081:80@loadbalancer
 kubectl config use-context k3d-k3s-default
+```
+
+If you already have the cluster, add the Ingress port mapping:
+```bash
+k3d cluster edit k3s-default --port-add 8081:80@loadbalancer
 ```
 
 Confirm Kubernetes is reachable before applying manifests:
@@ -78,13 +110,13 @@ docker login -u elarsaks
 ### 2. Build the Docker Image
 Build the image with your Docker Hub username:
 ```bash
-docker build -t elarsaks/log-output:1.1.0 ./log_output
+docker build -t elarsaks/log-output:1.7.0 ./log_output
 ```
 
 ### 3. Push to Docker Hub
 Push the image to Docker Hub so Kubernetes can pull it:
 ```bash
-docker push elarsaks/log-output:1.1.0
+docker push elarsaks/log-output:1.7.0
 ```
 
 ### 4. Apply Kubernetes Manifest
@@ -98,6 +130,8 @@ If you are already inside the `log_output/` directory you can drop the `log_outp
 Output:
 ```
 deployment.apps/log-output configured
+service/log-output configured
+ingress.networking.k8s.io/log-output configured
 ```
 
 ### 5. Restart Deployment to Confirm Fresh Pods
@@ -130,6 +164,7 @@ Example output:
 > node index.js
 
 App started. Stored value: 2e72edec-87b9-4c14-bfe9-0348828edbe3
+Server started in port 3000
 2025-11-08T19:21:02.462Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
 2025-11-08T19:21:07.468Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
 2025-11-08T19:21:12.479Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
@@ -139,12 +174,26 @@ App started. Stored value: 2e72edec-87b9-4c14-bfe9-0348828edbe3
 2025-11-08T19:21:32.500Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
 ```
 
+### 8. Access Through Ingress
+Open either endpoint in a browser:
+```bash
+http://localhost:8081/
+http://localhost:8081/status
+```
+
+Example response:
+```text
+2025-11-08T19:21:37.512Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
+```
+
 ## Key Observations
 
 ✅ The application successfully:
 - Starts and generates a UUID stored in memory
 - Logs the **same UUID** every 5 seconds
 - Includes ISO 8601 timestamps in each log entry
+- Serves the current status through HTTP
+- Exposes the service through Kubernetes Ingress
 - Runs successfully in a Kubernetes pod
 - Image is pulled from Docker Hub registry
 
