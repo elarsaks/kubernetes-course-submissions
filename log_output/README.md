@@ -14,8 +14,8 @@ kubectl logs -f deployment/log-output
 
 Then open the application through the cluster Ingress:
 ```bash
-curl http://localhost/
-curl http://localhost/status
+curl http://localhost:8081/
+curl http://localhost:8081/status
 ```
 
 This ensures the deployment is managed declaratively, the pod is emitting log lines, and the current status is reachable through the browser.
@@ -78,8 +78,13 @@ k3d cluster start k3s-default
 
 If the cluster does not exist yet, create it:
 ```bash
-k3d cluster create k3s-default
+k3d cluster create k3s-default --port 8081:80@loadbalancer
 kubectl config use-context k3d-k3s-default
+```
+
+If you already have the cluster, add the Ingress port mapping:
+```bash
+k3d cluster edit k3s-default --port-add 8081:80@loadbalancer
 ```
 
 Confirm Kubernetes is reachable before applying manifests:
@@ -172,8 +177,8 @@ Server started in port 3000
 ### 8. Access Through Ingress
 Open either endpoint in a browser:
 ```bash
-http://localhost/
-http://localhost/status
+http://localhost:8081/
+http://localhost:8081/status
 ```
 
 Example response:
