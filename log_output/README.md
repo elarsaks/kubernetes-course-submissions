@@ -1,7 +1,7 @@
-# Exercise 1.11 - Persisting Data
+# Exercise 2.1 - Connecting Pods
 
 ## Overview
-The Log output application uses two containers in one Pod. The writer generates one random UUID and appends a timestamp plus UUID to a shared PersistentVolume every five seconds. The HTTP server reads that file and includes the persisted Ping / Pongs count in its response.
+The Log output application uses two containers in one Pod. The writer generates one random UUID and appends a timestamp plus UUID to a shared file every five seconds. The HTTP server reads that file and fetches the Ping / Pongs count from the `ping-pong` Service over HTTP.
 
 ## For Course Graders
 
@@ -33,7 +33,7 @@ This ensures the deployment is managed declaratively, the pod is emitting log li
 
 ### Kubernetes storage
 
-Both applications mount the `shared-data-claim` PVC at `/usr/src/app/files`. The Ping-pong application stores its request count in `ping-pong.txt`, while the Log output Pod stores its log in `log.txt`.
+The Log output containers mount `shared-data-claim` to share `log.txt`. The Ping-pong application no longer mounts that volume; its counter is served through HTTP.
 
 ### Build and deploy
 
