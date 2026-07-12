@@ -1,16 +1,16 @@
-# Exercise 1.11 - Ping Pong Application
+# Exercise 2.1 - Connecting Pods
 
-Minimal Node.js HTTP server for DevOps with Kubernetes exercise 1.11. The request count is stored in the shared PersistentVolume.
+Minimal Node.js HTTP server for DevOps with Kubernetes exercise 2.1. The request count is kept in memory and exposed over HTTP for the Log output application.
 
 ## Behavior
 
-`GET /pingpong` returns:
+`GET /pingpong` returns the current count and then increments it:
 
 ```text
 pong 0
 ```
 
-The number is stored in `ping-pong.txt` on the shared PersistentVolume. Each successful request returns the current value and then increments it.
+The Log output application reaches this endpoint through the `ping-pong` ClusterIP Service.
 
 ## Build
 
