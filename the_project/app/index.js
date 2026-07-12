@@ -7,13 +7,9 @@ const port = Number.parseInt(process.env.PORT ?? "", 10) || 3000;
 const cacheDir = process.env.CACHE_DIR ?? "/usr/src/app/files";
 const imagePath = path.join(cacheDir, "image.jpg");
 const imageUrl = "https://picsum.photos/1200";
+const todoBackendUrl = process.env.TODO_BACKEND_URL ?? "http://todo-backend:3000/todos";
 const cacheDurationMs = 10 * 60 * 1000;
 let refreshPromise;
-const todos = [
-  "Learn Kubernetes basics",
-  "Deploy application to cluster",
-  "Configure persistent volumes",
-];
 
 fs.mkdirSync(cacheDir, { recursive: true });
 
@@ -79,7 +75,63 @@ const ensureImage = async () => {
   }
 };
 
+const requestTodos = (options = {}, body) => new Promise((resolve, reject) => {
+  const request = http.request(todoBackendUrl, options, (response) => {
+    let contents = "";
+    response.setEncoding("utf8");
+    response.on("data", (chunk) => { contents += chunk; });
+    response.on("end", () => {
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        reject(new Error(`Todo backend returned HTTP ${response.statusCode}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(contents));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+  request.on("error", reject);
+  if (body) request.write(body);
+  request.end();
+});
+
+const readBody = (req) => new Promise((resolve, reject) => {
+  let body = "";
+  req.on("data", (chunk) => { body += chunk; });
+  req.on("end", () => resolve(body));
+  req.on("error", reject);
+});
+
+const escapeHtml = (value) => String(value)
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#039;");
+
 const server = http.createServer(async (req, res) => {
+  if (req.method === "POST" && req.url === "/todos") {
+    try {
+      const body = await readBody(req);
+      const content = new URLSearchParams(body).get("content")?.trim();
+      if (!content || content.length > 140) {
+        res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Todo must contain 1–140 characters\n");
+        return;
+      }
+      await requestTodos({ method: "POST", headers: { "Content-Type": "application/json" } }, JSON.stringify({ content }));
+      res.writeHead(303, { Location: "/" });
+      res.end();
+    } catch (error) {
+      console.error("Could not create todo:", error);
+      res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Todo backend is not available\n");
+    }
+    return;
+  }
+
   if (req.method !== "GET" || (req.url !== "/" && req.url !== "/image.jpg")) {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
     res.end("Not found\n");
@@ -95,7 +147,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const todoItems = todos.map((todo) => `<li>${todo}</li>`).join("\n");
+    const todos = await requestTodos();
+    const todoItems = todos.map((todo) => `<li>${escapeHtml(todo.content)}</li>`).join("\n");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(`<!doctype html>
 <html lang="en">
@@ -122,8 +175,8 @@ const server = http.createServer(async (req, res) => {
   <body>
     <h1>Todo App</h1>
     <img class="image" src="/image.jpg" alt="Random cached picture">
-    <form onsubmit="return false">
-      <input type="text" maxlength="140" placeholder="Enter a new todo (max 140 characters)">
+    <form method="post" action="/todos">
+      <input type="text" name="content" maxlength="140" required placeholder="Enter a new todo (max 140 characters)">
       <button type="submit">Send</button>
     </form>
     <h2>Todos</h2>

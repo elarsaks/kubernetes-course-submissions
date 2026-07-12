@@ -1,7 +1,7 @@
 {
     "name": "the-project",
-    "version": "1.13.0",
-    "description": "DevOps with Kubernetes exercise 1.13 todo UI",
+    "version": "2.2.0",
+    "description": "DevOps with Kubernetes exercise 2.2 todo app",
     "main": "app/index.js",
     "scripts": {
         "start": "node app/index.js"
