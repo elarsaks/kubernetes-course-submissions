@@ -1,61 +1,42 @@
-# Exercise 1.8 - The Project
+# Exercise 1.12 - The Project Image Cache
 
-Minimal Node.js HTTP server for DevOps with Kubernetes exercises 1.5, 1.6, and 1.8.
+The project displays a random image from Lorem Picsum. The image is cached in a PersistentVolume and refreshed after ten minutes. If the API is temporarily unavailable, an existing cached image is served.
 
-## Behavior
-
-The app reads `PORT` from the environment and defaults to `3000`.
-
-`GET /` returns:
-
-```text
-Application <startup-random-hash>. Request <request-random-hash>
-```
-
-The application hash is created once when the process starts. The request hash is created for each request.
-
-## Build
+## Build and push
 
 ```bash
-docker build -t elarsaks/the-project:1.8.0 .
+docker build -t elarsaks/the-project:1.12.0 ./the_project
+docker push elarsaks/the-project:1.12.0
 ```
 
-If using k3d:
+## Deploy locally with k3d
+
+The local PV is tied to the default k3d server node:
 
 ```bash
-k3d image import elarsaks/the-project:1.8.0
+docker exec k3d-k3s-default-server-0 mkdir -p /tmp/kube-project
+kubectl apply -f the_project/manifests/persistentvolume.yaml
+kubectl apply -f the_project/manifests/persistentvolumeclaim.yaml
+kubectl apply -f the_project/manifests/deployment.yaml
+kubectl rollout status deployment/the-project
 ```
 
-## Deploy
+Open `http://localhost:8081/`. The page loads the cached image from `/image.jpg`.
+
+## Test caching
 
 ```bash
-kubectl apply -f manifests/deployment.yaml
-kubectl get pods -l app=the-project
+curl -I http://localhost:8081/image.jpg
+kubectl exec deployment/the-project -- stat /usr/src/app/files/image.jpg
 ```
 
-## Test
-
-Exercise 1.8 exposes the app through Ingress.
-
-```bash
-kubectl get service the-project
-kubectl get ingress the-project
-```
-
-If your k3d cluster does not expose the Ingress controller yet, add a local port mapping:
-
-```bash
-k3d cluster edit k3s-default --port-add 8081:80@loadbalancer
-```
-
-Open:
-
-```text
-http://localhost:8081/
-```
+Accessing the app repeatedly within ten minutes reuses the same file. After ten minutes, the next request downloads a new image. Restarting the Pod does not remove the image because it is stored on the PersistentVolume.
 
 ## Cleanup
 
 ```bash
-kubectl delete -f manifests/deployment.yaml
+kubectl delete -f the_project/manifests/deployment.yaml
+kubectl delete -f the_project/manifests/persistentvolumeclaim.yaml
+kubectl delete -f the_project/manifests/persistentvolume.yaml
+docker exec k3d-k3s-default-server-0 rm -rf /tmp/kube-project
 ```
