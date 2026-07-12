@@ -1,7 +1,7 @@
-# Exercise 1.1, 1.3 & 1.7 - Log Output Application
+# Exercise 1.10 - Even More Services
 
 ## Overview
-This exercise demonstrates creating a simple Node.js application that generates a random UUID on startup, logs it every 5 seconds, and exposes the current timestamp plus UUID through an HTTP endpoint and Kubernetes Ingress.
+The Log output application is split into two containers in one Pod. The writer generates one random UUID and appends a timestamp plus UUID to a shared file every five seconds. The HTTP server reads that file and serves it at `/`.
 
 ## For Course Graders
 
@@ -9,7 +9,8 @@ From the repository root, apply the declarative deployment and confirm the logs:
 ```bash
 kubectl apply -f log_output/manifests/deployment.yaml
 kubectl rollout restart deployment/log-output
-kubectl logs -f deployment/log-output
+kubectl logs -f deployment/log-output -c log-writer
+kubectl logs -f deployment/log-output -c log-server
 ```
 
 Then open the application through the cluster Ingress:
@@ -22,49 +23,32 @@ This ensures the deployment is managed declaratively, the pod is emitting log li
 
 ## Application Structure
 
-### Files Created
-- `index.js` - Main application that generates and logs a UUID
+### Files
+- `writer.js` - Generates the UUID and writes timestamped lines to the shared file
+- `server.js` - Serves the shared file over HTTP
+- `index.js` - Keeps the default local package entry point compatible
 - `package.json` - Node.js project configuration
 - `Dockerfile` - Container image definition
 - `manifests/deployment.yaml` - Declarative Kubernetes deployment, service, and ingress definition
 
-### Application Code (`index.js`)
-```javascript
-const http = require("node:http");
-const crypto = require("node:crypto");
+### Kubernetes storage
 
-const id = crypto.randomUUID();
-const port = Number.parseInt(process.env.PORT ?? "", 10) || 3000;
+The Deployment defines an `emptyDir` volume named `shared-log`. Both containers mount it at `/usr/src/app/files`. The volume lasts for the lifetime of the Pod; its contents are lost when the Pod is replaced.
 
-console.log("App started. Stored value:", id);
+### Build and deploy
 
-const getStatus = () => `${new Date().toISOString()}: ${id}\n`;
-
-const server = http.createServer((req, res) => {
-  if (req.method !== "GET" || (req.url !== "/" && req.url !== "/status")) {
-    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("Not found\n");
-    return;
-  }
-
-  res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-  res.end(getStatus());
-});
-
-server.listen(port, () => {
-  console.log(`Server started in port ${port}`);
-});
-
-setInterval(() => {
-  console.log(getStatus().trimEnd());
-}, 5000);
+```bash
+docker build -t elarsaks/log-output:1.10.0 ./log_output
+docker push elarsaks/log-output:1.10.0
+kubectl apply -f log_output/manifests/deployment.yaml
+kubectl get pods -l app=log-output
+kubectl logs -f deployment/log-output -c log-writer
+kubectl logs -f deployment/log-output -c log-server
 ```
 
-The application:
-- Generates ONE random UUID on startup using `crypto.randomUUID()`
-- Stores the UUID in memory
-- Prints the same UUID every 5 seconds with an ISO timestamp
-- Serves the current timestamp and UUID at `/` and `/status`
+Open `http://localhost:8081/` in a browser.
+
+The writer generates one random UUID on startup and appends lines to the shared file. The server returns the file contents at `/` and `/status`.
 
 ## Deployment Steps (Full Workflow)
 
@@ -110,13 +94,13 @@ docker login -u elarsaks
 ### 2. Build the Docker Image
 Build the image with your Docker Hub username:
 ```bash
-docker build -t elarsaks/log-output:1.7.0 ./log_output
+docker build -t elarsaks/log-output:1.10.0 ./log_output
 ```
 
 ### 3. Push to Docker Hub
 Push the image to Docker Hub so Kubernetes can pull it:
 ```bash
-docker push elarsaks/log-output:1.7.0
+docker push elarsaks/log-output:1.10.0
 ```
 
 ### 4. Apply Kubernetes Manifest
@@ -155,7 +139,8 @@ log-output   1/1     1            1           46s
 ### 7. View Application Logs
 View the application logs:
 ```bash
-kubectl logs -f deployment/log-output
+kubectl logs -f deployment/log-output -c log-writer
+kubectl logs -f deployment/log-output -c log-server
 ```
 
 Example output:
