@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: log-output
+  namespace: exercises
 spec:
   replicas: 1
   selector:
@@ -42,6 +43,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: log-output
+  namespace: exercises
 spec:
   type: ClusterIP
   selector:
@@ -54,6 +56,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: log-output
+  namespace: exercises
 spec:
   rules:
     - http:
