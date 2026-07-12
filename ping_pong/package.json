@@ -1,7 +1,7 @@
 {
     "name": "ping_pong",
-    "version": "1.9.0",
-    "description": "Ping-pong application for DevOps with Kubernetes exercise 1.9",
+    "version": "1.11.0",
+    "description": "Ping-pong application for DevOps with Kubernetes exercise 1.11",
     "main": "index.js",
     "scripts": {
         "start": "node index.js"

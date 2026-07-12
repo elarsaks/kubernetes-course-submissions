@@ -4,6 +4,10 @@ const path = require("node:path");
 
 const port = Number.parseInt(process.env.PORT ?? "", 10) || 3000;
 const file = path.join(process.env.SHARED_DIR ?? "/usr/src/app/files", "log.txt");
+const pingPongFile = path.join(
+  process.env.SHARED_DIR ?? "/usr/src/app/files",
+  "ping-pong.txt",
+);
 
 const server = http.createServer((req, res) => {
   if (req.method !== "GET" || (req.url !== "/" && req.url !== "/status")) {
@@ -19,8 +23,15 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    let pingPongs = 0;
+    try {
+      pingPongs = Number.parseInt(fs.readFileSync(pingPongFile, "utf8"), 10) || 0;
+    } catch {
+      // The ping-pong application may not have received a request yet.
+    }
+
     res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end(contents);
+    res.end(`${contents}\nPing / Pongs: ${pingPongs}\n`);
   });
 });
 

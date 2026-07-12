@@ -1,6 +1,6 @@
 {
     "name": "log_output",
-    "version": "1.10.0",
+    "version": "1.11.0",
     "description": "A two-container log writer and HTTP server",
     "main": "index.js",
     "scripts": {
