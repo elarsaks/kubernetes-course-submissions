@@ -9,7 +9,12 @@ const counterFile = path.join(
 );
 
 fs.mkdirSync(path.dirname(counterFile), { recursive: true });
-let counter = Number.parseInt(fs.readFileSync(counterFile, "utf8"), 10) || 0;
+let counter = 0;
+try {
+  counter = Number.parseInt(fs.readFileSync(counterFile, "utf8"), 10) || 0;
+} catch {
+  fs.writeFileSync(counterFile, "0");
+}
 
 const server = http.createServer((req, res) => {
   if (req.method !== "GET" || req.url !== "/pingpong") {
