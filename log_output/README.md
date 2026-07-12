@@ -42,6 +42,7 @@ docker build -t elarsaks/log-output:1.11.0 ./log_output
 docker push elarsaks/log-output:1.11.0
 docker build -t elarsaks/ping-pong:1.11.0 ./ping_pong
 docker push elarsaks/ping-pong:1.11.0
+docker exec k3d-k3s-default-server-0 mkdir -p /tmp/kube
 kubectl apply -f storage/manifests/persistentvolume.yaml
 kubectl apply -f storage/manifests/persistentvolumeclaim.yaml
 kubectl apply -f ping_pong/manifests/deployment.yaml

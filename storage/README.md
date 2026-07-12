@@ -3,7 +3,7 @@
 The PersistentVolume and PersistentVolumeClaim in `manifests/` provide shared local storage for the `ping-pong` and `log-output` applications. The local path must exist on the k3d agent before applying the PersistentVolume:
 
 ```bash
-docker exec k3d-k3s-default-agent-0 mkdir -p /tmp/kube
+docker exec k3d-k3s-default-server-0 mkdir -p /tmp/kube
 kubectl apply -f storage/manifests/persistentvolume.yaml
 kubectl apply -f storage/manifests/persistentvolumeclaim.yaml
 ```
