@@ -15,13 +15,13 @@ The number is stored in `ping-pong.txt` on the shared PersistentVolume. Each suc
 ## Build
 
 ```bash
-docker build -t elarsaks/ping-pong:1.11.0 .
+docker build -t elarsaks/ping-pong:1.11.1 .
 ```
 
 If using k3d:
 
 ```bash
-k3d image import elarsaks/ping-pong:1.11.0 -c k3s-default
+k3d image import elarsaks/ping-pong:1.11.1 -c k3s-default
 ```
 
 ## Deploy
