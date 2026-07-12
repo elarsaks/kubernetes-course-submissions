@@ -9,6 +9,11 @@ const imagePath = path.join(cacheDir, "image.jpg");
 const imageUrl = "https://picsum.photos/1200";
 const cacheDurationMs = 10 * 60 * 1000;
 let refreshPromise;
+const todos = [
+  "Learn Kubernetes basics",
+  "Deploy application to cluster",
+  "Configure persistent volumes",
+];
 
 fs.mkdirSync(cacheDir, { recursive: true });
 
@@ -90,11 +95,40 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    const todoItems = todos.map((todo) => `<li>${todo}</li>`).join("\n");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(`<!doctype html>
 <html lang="en">
-  <head><meta charset="utf-8"><title>The Project</title></head>
-  <body><h1>The Project</h1><img src="/image.jpg" alt="Random cached picture"></body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Todo App</title>
+    <style>
+      :root { font-family: Arial, sans-serif; color: #292929; }
+      body { margin: 0 auto; max-width: 1000px; padding: 32px 20px 60px; }
+      h1, h2 { text-align: center; }
+      h1 { font-size: 3rem; margin: 8px 0 28px; }
+      h2 { font-size: 2rem; margin: 34px 0 18px; }
+      .image { display: block; width: min(100%, 400px); height: 400px; object-fit: cover; margin: 0 auto 80px; border-radius: 14px; }
+      form { display: flex; gap: 18px; margin: 0 auto; max-width: 850px; }
+      input { flex: 1; min-width: 0; border: 3px solid #4caf50; border-radius: 6px; font-size: 1.3rem; padding: 14px 18px; }
+      button { border: 0; border-radius: 6px; background: #4caf50; color: white; cursor: pointer; font-size: 1.3rem; padding: 0 34px; }
+      button:hover { background: #3d9641; }
+      ul { list-style: none; margin: 0; padding: 0; }
+      li { background: #fafafa; border-left: 6px solid #4caf50; border-radius: 6px; box-shadow: 0 2px 8px #00000012; font-size: 1.35rem; margin: 16px 0; padding: 22px 28px; }
+      @media (max-width: 600px) { form { flex-direction: column; } button { padding: 14px; } }
+    </style>
+  </head>
+  <body>
+    <h1>Todo App</h1>
+    <img class="image" src="/image.jpg" alt="Random cached picture">
+    <form onsubmit="return false">
+      <input type="text" maxlength="140" placeholder="Enter a new todo (max 140 characters)">
+      <button type="submit">Send</button>
+    </form>
+    <h2>Todos</h2>
+    <ul>${todoItems}</ul>
+  </body>
 </html>
 `);
   } catch (error) {
