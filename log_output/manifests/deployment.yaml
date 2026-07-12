@@ -14,8 +14,7 @@ spec:
     spec:
       volumes:
         - name: shared-data
-          persistentVolumeClaim:
-            claimName: shared-data-claim
+          emptyDir: {}
       containers:
         - name: log-writer
           image: elarsaks/log-output:1.11.0
