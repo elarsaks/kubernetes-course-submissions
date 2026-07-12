@@ -7,10 +7,11 @@ The Log output application uses two containers in one Pod. The writer generates 
 
 From the repository root, apply the declarative deployment and confirm the logs:
 ```bash
+kubectl apply -f exercises/manifests/namespace.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
-kubectl rollout restart deployment/log-output
-kubectl logs -f deployment/log-output -c log-writer
-kubectl logs -f deployment/log-output -c log-server
+kubectl rollout restart deployment/log-output -n exercises
+kubectl logs -f deployment/log-output -n exercises -c log-writer
+kubectl logs -f deployment/log-output -n exercises -c log-server
 ```
 
 Then open the application through the cluster Ingress:
@@ -42,11 +43,12 @@ docker build -t elarsaks/log-output:1.11.0 ./log_output
 docker push elarsaks/log-output:1.11.0
 docker build -t elarsaks/ping-pong:1.11.0 ./ping_pong
 docker push elarsaks/ping-pong:1.11.0
+kubectl apply -f exercises/manifests/namespace.yaml
 kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
-kubectl get pods -l app=log-output
-kubectl logs -f deployment/log-output -c log-writer
-kubectl logs -f deployment/log-output -c log-server
+kubectl get pods -n exercises -l app=log-output
+kubectl logs -f deployment/log-output -n exercises -c log-writer
+kubectl logs -f deployment/log-output -n exercises -c log-server
 ```
 
 Open `http://localhost:8081/` in a browser.
@@ -109,6 +111,7 @@ docker push elarsaks/log-output:1.11.0
 ### 4. Apply Kubernetes Manifest
 Deploy using the declarative manifest (from the repository root):
 ```bash
+kubectl apply -f exercises/manifests/namespace.yaml
 kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
 ```
@@ -124,14 +127,14 @@ ingress.networking.k8s.io/log-output configured
 
 ### 5. Restart Deployment to Confirm Fresh Pods
 ```bash
-kubectl rollout restart deployment/log-output
+kubectl rollout restart deployment/log-output -n exercises
 ```
 
 This guarantees the pod is recreated from the latest manifest definition.
 
 ### 6. Verify Deployment
 ```bash
-kubectl get deployments
+kubectl get deployments -n exercises
 ```
 
 Output:
@@ -143,8 +146,8 @@ log-output   1/1     1            1           46s
 ### 7. View Application Logs
 View the application logs:
 ```bash
-kubectl logs -f deployment/log-output -c log-writer
-kubectl logs -f deployment/log-output -c log-server
+kubectl logs -f deployment/log-output -n exercises -c log-writer
+kubectl logs -f deployment/log-output -n exercises -c log-server
 ```
 
 Example output:
