@@ -15,6 +15,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [1.7. Log Output Ingress](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.7/log_output)
 - [1.8. The Project: Ingress](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.8/the_project)
 - [1.9. More Services](https://github.com/elarsaks/kubernetes-course-submissions/tree/1.9/ping_pong)
+- [1.10. Even More Services](./log_output)
 
 ---
 
