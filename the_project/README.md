@@ -1,36 +1,22 @@
-# Exercise 1.12 - The Project Image Cache
+# Exercise 1.13 - The Project Todo UI
 
-The project displays a random image from Lorem Picsum. The image is cached in a PersistentVolume and refreshed after ten minutes. If the API is temporarily unavailable, an existing cached image is served.
+The project now displays the cached image from Exercise 1.12 together with a Todo UI. The page has an input limited to 140 characters, a Send button that does not submit data yet, and three hardcoded todos.
 
-## Build and push
-
-```bash
-docker build -t elarsaks/the-project:1.12.0 ./the_project
-docker push elarsaks/the-project:1.12.0
-```
-
-## Deploy locally with k3d
-
-The local PV is tied to the default k3d server node:
+## Build and deploy
 
 ```bash
-docker exec k3d-k3s-default-server-0 mkdir -p /tmp/kube-project
+docker build -t elarsaks/the-project:1.13.0 ./the_project
+docker push elarsaks/the-project:1.13.0
+
 kubectl apply -f the_project/manifests/persistentvolume.yaml
 kubectl apply -f the_project/manifests/persistentvolumeclaim.yaml
 kubectl apply -f the_project/manifests/deployment.yaml
 kubectl rollout status deployment/the-project
 ```
 
-Open `http://localhost:8081/`. The page loads the cached image from `/image.jpg`.
+Open `http://localhost:8081/` to view the Todo App.
 
-## Test caching
-
-```bash
-curl -I http://localhost:8081/image.jpg
-kubectl exec deployment/the-project -- stat /usr/src/app/files/image.jpg
-```
-
-Accessing the app repeatedly within ten minutes reuses the same file. After ten minutes, the next request downloads a new image. Restarting the Pod does not remove the image because it is stored on the PersistentVolume.
+The image cache and PersistentVolume behavior from Exercise 1.12 remain unchanged. The Send button is intentionally non-functional; submitting todos is implemented in a later exercise.
 
 ## Cleanup
 
