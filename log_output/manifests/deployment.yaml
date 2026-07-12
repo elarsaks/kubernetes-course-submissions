@@ -13,18 +13,19 @@ spec:
         app: log-output
     spec:
       volumes:
-        - name: shared-log
-          emptyDir: {}
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: shared-data-claim
       containers:
         - name: log-writer
-          image: elarsaks/log-output:1.10.0
+          image: elarsaks/log-output:1.11.0
           imagePullPolicy: IfNotPresent
           command: ["node", "writer.js"]
           volumeMounts:
-            - name: shared-log
+            - name: shared-data
               mountPath: /usr/src/app/files
         - name: log-server
-          image: elarsaks/log-output:1.10.0
+          image: elarsaks/log-output:1.11.0
           imagePullPolicy: IfNotPresent
           command: ["node", "server.js"]
           env:
@@ -33,7 +34,7 @@ spec:
           ports:
             - containerPort: 3000
           volumeMounts:
-            - name: shared-log
+            - name: shared-data
               mountPath: /usr/src/app/files
 ---
 apiVersion: v1

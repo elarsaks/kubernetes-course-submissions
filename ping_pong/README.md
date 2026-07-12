@@ -1,6 +1,6 @@
-# Exercise 1.9 - Ping Pong Application
+# Exercise 1.11 - Ping Pong Application
 
-Minimal Node.js HTTP server for DevOps with Kubernetes exercise 1.9.
+Minimal Node.js HTTP server for DevOps with Kubernetes exercise 1.11. The request count is stored in the shared PersistentVolume.
 
 ## Behavior
 
@@ -10,18 +10,18 @@ Minimal Node.js HTTP server for DevOps with Kubernetes exercise 1.9.
 pong 0
 ```
 
-The number is an in-memory counter. Each successful request returns the current value and then increments it.
+The number is stored in `ping-pong.txt` on the shared PersistentVolume. Each successful request returns the current value and then increments it.
 
 ## Build
 
 ```bash
-docker build -t elarsaks/ping-pong:1.9.0 .
+docker build -t elarsaks/ping-pong:1.11.1 .
 ```
 
 If using k3d:
 
 ```bash
-k3d image import elarsaks/ping-pong:1.9.0 -c k3s-default
+k3d image import elarsaks/ping-pong:1.11.1 -c k3s-default
 ```
 
 ## Deploy
@@ -29,6 +29,8 @@ k3d image import elarsaks/ping-pong:1.9.0 -c k3s-default
 Apply the ping-pong deployment and the Log Output manifest that owns the shared Ingress:
 
 ```bash
+kubectl apply -f storage/manifests/persistentvolume.yaml
+kubectl apply -f storage/manifests/persistentvolumeclaim.yaml
 kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
 ```

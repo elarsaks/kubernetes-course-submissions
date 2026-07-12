@@ -1,7 +1,7 @@
-# Exercise 1.10 - Even More Services
+# Exercise 1.11 - Persisting Data
 
 ## Overview
-The Log output application is split into two containers in one Pod. The writer generates one random UUID and appends a timestamp plus UUID to a shared file every five seconds. The HTTP server reads that file and serves it at `/`.
+The Log output application uses two containers in one Pod. The writer generates one random UUID and appends a timestamp plus UUID to a shared PersistentVolume every five seconds. The HTTP server reads that file and includes the persisted Ping / Pongs count in its response.
 
 ## For Course Graders
 
@@ -33,13 +33,19 @@ This ensures the deployment is managed declaratively, the pod is emitting log li
 
 ### Kubernetes storage
 
-The Deployment defines an `emptyDir` volume named `shared-log`. Both containers mount it at `/usr/src/app/files`. The volume lasts for the lifetime of the Pod; its contents are lost when the Pod is replaced.
+Both applications mount the `shared-data-claim` PVC at `/usr/src/app/files`. The Ping-pong application stores its request count in `ping-pong.txt`, while the Log output Pod stores its log in `log.txt`.
 
 ### Build and deploy
 
 ```bash
-docker build -t elarsaks/log-output:1.10.0 ./log_output
-docker push elarsaks/log-output:1.10.0
+docker build -t elarsaks/log-output:1.11.0 ./log_output
+docker push elarsaks/log-output:1.11.0
+docker build -t elarsaks/ping-pong:1.11.0 ./ping_pong
+docker push elarsaks/ping-pong:1.11.0
+docker exec k3d-k3s-default-server-0 mkdir -p /tmp/kube
+kubectl apply -f storage/manifests/persistentvolume.yaml
+kubectl apply -f storage/manifests/persistentvolumeclaim.yaml
+kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
 kubectl get pods -l app=log-output
 kubectl logs -f deployment/log-output -c log-writer
@@ -94,18 +100,21 @@ docker login -u elarsaks
 ### 2. Build the Docker Image
 Build the image with your Docker Hub username:
 ```bash
-docker build -t elarsaks/log-output:1.10.0 ./log_output
+docker build -t elarsaks/log-output:1.11.0 ./log_output
 ```
 
 ### 3. Push to Docker Hub
 Push the image to Docker Hub so Kubernetes can pull it:
 ```bash
-docker push elarsaks/log-output:1.10.0
+docker push elarsaks/log-output:1.11.0
 ```
 
 ### 4. Apply Kubernetes Manifest
 Deploy using the declarative manifest (from the repository root):
 ```bash
+kubectl apply -f storage/manifests/persistentvolume.yaml
+kubectl apply -f storage/manifests/persistentvolumeclaim.yaml
+kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
 ```
 
