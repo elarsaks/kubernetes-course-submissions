@@ -12,15 +12,22 @@ spec:
       labels:
         app: the-project
     spec:
+      volumes:
+        - name: image-cache
+          persistentVolumeClaim:
+            claimName: project-image-claim
       containers:
         - name: the-project
-          image: elarsaks/the-project:1.8.0
+          image: elarsaks/the-project:1.12.0
           imagePullPolicy: IfNotPresent
           env:
             - name: PORT
               value: "3000"
           ports:
             - containerPort: 3000
+          volumeMounts:
+            - name: image-cache
+              mountPath: /usr/src/app/files
 ---
 apiVersion: v1
 kind: Service

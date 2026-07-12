@@ -1,7 +1,7 @@
 {
     "name": "the-project",
-    "version": "1.0.0",
-    "description": "DevOps with Kubernetes exercise 1.5 app",
+    "version": "1.12.0",
+    "description": "DevOps with Kubernetes exercise 1.12 image project",
     "main": "app/index.js",
     "scripts": {
         "start": "node app/index.js"
