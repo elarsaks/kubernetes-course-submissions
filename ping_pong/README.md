@@ -29,8 +29,6 @@ k3d image import elarsaks/ping-pong:1.11.1 -c k3s-default
 Apply the ping-pong deployment and the Log Output manifest that owns the shared Ingress:
 
 ```bash
-kubectl apply -f storage/manifests/persistentvolume.yaml
-kubectl apply -f storage/manifests/persistentvolumeclaim.yaml
 kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
 ```

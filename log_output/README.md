@@ -1,7 +1,7 @@
 # Exercise 2.1 - Connecting Pods
 
 ## Overview
-The Log output application uses two containers in one Pod. The writer generates one random UUID and appends a timestamp plus UUID to a shared file every five seconds. The HTTP server reads that file and fetches the Ping / Pongs count from the `ping-pong` Service over HTTP.
+The Log output application uses two containers in one Pod. The writer generates one random UUID and appends a timestamp plus UUID to a shared `emptyDir` file every five seconds. The HTTP server reads that file and fetches the Ping / Pongs count from the `ping-pong` Service over HTTP.
 
 ## For Course Graders
 
@@ -33,7 +33,7 @@ This ensures the deployment is managed declaratively, the pod is emitting log li
 
 ### Kubernetes storage
 
-The Log output containers mount `shared-data-claim` to share `log.txt`. The Ping-pong application no longer mounts that volume; its counter is served through HTTP.
+The Log output containers share `log.txt` through an `emptyDir` volume. The Ping-pong application does not mount a volume; its counter is served through HTTP.
 
 ### Build and deploy
 
@@ -42,9 +42,6 @@ docker build -t elarsaks/log-output:1.11.0 ./log_output
 docker push elarsaks/log-output:1.11.0
 docker build -t elarsaks/ping-pong:1.11.0 ./ping_pong
 docker push elarsaks/ping-pong:1.11.0
-docker exec k3d-k3s-default-server-0 mkdir -p /tmp/kube
-kubectl apply -f storage/manifests/persistentvolume.yaml
-kubectl apply -f storage/manifests/persistentvolumeclaim.yaml
 kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
 kubectl get pods -l app=log-output
@@ -112,8 +109,6 @@ docker push elarsaks/log-output:1.11.0
 ### 4. Apply Kubernetes Manifest
 Deploy using the declarative manifest (from the repository root):
 ```bash
-kubectl apply -f storage/manifests/persistentvolume.yaml
-kubectl apply -f storage/manifests/persistentvolumeclaim.yaml
 kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
 ```
