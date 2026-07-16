@@ -3,23 +3,45 @@ const https = require("node:https");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const port = Number.parseInt(process.env.PORT ?? "", 10) || 3000;
-const cacheDir = process.env.CACHE_DIR ?? "/usr/src/app/files";
-const imagePath = path.join(cacheDir, "image.jpg");
-const imageUrl = "https://picsum.photos/1200";
-const todoBackendUrl = process.env.TODO_BACKEND_URL ?? "http://todo-backend:3000/todos";
-const cacheDurationMs = 10 * 60 * 1000;
+const requireEnv = (name) => {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+};
+
+const requirePositiveInteger = (name) => {
+  const value = Number(requireEnv(name));
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return value;
+};
+
+const port = requirePositiveInteger("PORT");
+const imagePath = path.resolve(requireEnv("IMAGE_PATH"));
+const imageUrl = requireEnv("IMAGE_URL");
+const todoBackendUrl = requireEnv("TODO_BACKEND_URL");
+const cacheDurationMs = requirePositiveInteger("CACHE_DURATION_MS");
+const maxImageRedirects = requirePositiveInteger("MAX_IMAGE_REDIRECTS");
+const maxTodoLength = requirePositiveInteger("MAX_TODO_LENGTH");
 let refreshPromise;
 
-fs.mkdirSync(cacheDir, { recursive: true });
+fs.mkdirSync(path.dirname(imagePath), { recursive: true });
+
+const clientFor = (url) => {
+  const protocol = new URL(url).protocol;
+  if (protocol === "http:") return http;
+  if (protocol === "https:") return https;
+  throw new Error(`Unsupported URL protocol: ${protocol}`);
+};
 
 const downloadImage = (url, redirects = 0) => new Promise((resolve, reject) => {
-  if (redirects > 5) {
+  if (redirects > maxImageRedirects) {
     reject(new Error("Too many redirects while downloading image"));
     return;
   }
 
-  https.get(url, (response) => {
+  clientFor(url).get(url, (response) => {
     if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
       response.resume();
       downloadImage(new URL(response.headers.location, url).toString(), redirects + 1)
@@ -76,7 +98,7 @@ const ensureImage = async () => {
 };
 
 const requestTodos = (options = {}, body) => new Promise((resolve, reject) => {
-  const request = http.request(todoBackendUrl, options, (response) => {
+  const request = clientFor(todoBackendUrl).request(todoBackendUrl, options, (response) => {
     let contents = "";
     response.setEncoding("utf8");
     response.on("data", (chunk) => { contents += chunk; });
@@ -116,9 +138,9 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await readBody(req);
       const content = new URLSearchParams(body).get("content")?.trim();
-      if (!content || content.length > 140) {
+      if (!content || content.length > maxTodoLength) {
         res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end("Todo must contain 1–140 characters\n");
+        res.end(`Todo must contain 1–${maxTodoLength} characters\n`);
         return;
       }
       await requestTodos({ method: "POST", headers: { "Content-Type": "application/json" } }, JSON.stringify({ content }));
@@ -176,7 +198,7 @@ const server = http.createServer(async (req, res) => {
     <h1>Todo App</h1>
     <img class="image" src="/image.jpg" alt="Random cached picture">
     <form method="post" action="/todos">
-      <input type="text" name="content" maxlength="140" required placeholder="Enter a new todo (max 140 characters)">
+      <input type="text" name="content" maxlength="${maxTodoLength}" required placeholder="Enter a new todo (max ${maxTodoLength} characters)">
       <button type="submit">Send</button>
     </form>
     <h2>Todos</h2>
