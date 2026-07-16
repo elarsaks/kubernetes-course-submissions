@@ -1,211 +1,57 @@
-# Exercise 2.1 - Connecting Pods
+# Exercise 2.5 - Documentation and ConfigMaps
 
-## Overview
-The Log output application uses two containers in one Pod. The writer generates one random UUID and appends a timestamp plus UUID to a shared `emptyDir` file every five seconds. The HTTP server reads that file and fetches the Ping / Pongs count from the `ping-pong` Service over HTTP.
+The Log Output application receives two values from the `log-output-config` ConfigMap:
 
-## For Course Graders
+- `information.txt` is mounted into the `log-server` container as a file.
+- `MESSAGE` is passed to the `log-server` container as an environment variable.
 
-From the repository root, apply the declarative deployment and confirm the logs:
-```bash
-kubectl apply -f exercises/manifests/namespace.yaml
-kubectl apply -f log_output/manifests/deployment.yaml
-kubectl rollout restart deployment/log-output -n exercises
-kubectl logs -f deployment/log-output -n exercises -c log-writer
-kubectl logs -f deployment/log-output -n exercises -c log-server
+The application prints both values before its usual timestamp, UUID, and Ping / Pongs count:
+
+```text
+file content: this text is from file
+env variable: MESSAGE=hello world
+2026-05-18T12:15:17.705Z: 8523ecb1-c716-4cb6-a044-b9e83bb98e43
+Ping / Pongs: 3
 ```
 
-Then open the application through the cluster Ingress:
+## Build and deploy
+
+From the repository root:
+
+```bash
+docker build -t elarsaks/log-output:2.5.0 ./log_output
+docker push elarsaks/log-output:2.5.0
+
+kubectl apply -f exercises/manifests/namespace.yaml
+kubectl apply -f log_output/manifests/configmap.yaml
+kubectl apply -f ping_pong/manifests/deployment.yaml
+kubectl apply -f log_output/manifests/deployment.yaml
+kubectl rollout status deployment/log-output -n exercises
+```
+
+The ConfigMap must be applied before the Deployment because the Pod references it when starting.
+
+## Verify
+
+Open the application through the cluster Ingress:
+
 ```bash
 curl http://localhost:8081/
-curl http://localhost:8081/status
 ```
 
-This ensures the deployment is managed declaratively, the pod is emitting log lines, and the current status is reachable through the browser.
-
-## Application Structure
-
-### Files
-- `writer.js` - Generates the UUID and writes timestamped lines to the shared file
-- `server.js` - Serves the shared file over HTTP
-- `index.js` - Keeps the default local package entry point compatible
-- `package.json` - Node.js project configuration
-- `Dockerfile` - Container image definition
-- `manifests/deployment.yaml` - Declarative Kubernetes deployment, service, and ingress definition
-
-### Kubernetes storage
-
-The Log output containers share `log.txt` through an `emptyDir` volume. The Ping-pong application does not mount a volume; its counter is served through HTTP.
-
-### Build and deploy
+Inspect the injected configuration directly if needed:
 
 ```bash
-docker build -t elarsaks/log-output:1.11.0 ./log_output
-docker push elarsaks/log-output:1.11.0
-docker build -t elarsaks/ping-pong:1.11.0 ./ping_pong
-docker push elarsaks/ping-pong:1.11.0
-kubectl apply -f exercises/manifests/namespace.yaml
-kubectl apply -f ping_pong/manifests/deployment.yaml
-kubectl apply -f log_output/manifests/deployment.yaml
-kubectl get pods -n exercises -l app=log-output
-kubectl logs -f deployment/log-output -n exercises -c log-writer
-kubectl logs -f deployment/log-output -n exercises -c log-server
+kubectl exec deployment/log-output -n exercises -c log-server -- \
+  cat /usr/src/app/config/information.txt
+kubectl exec deployment/log-output -n exercises -c log-server -- \
+  printenv MESSAGE
 ```
-
-Open `http://localhost:8081/` in a browser.
-
-The writer generates one random UUID on startup and appends lines to the shared file. The server returns the file contents at `/` and `/status`.
-
-## Deployment Steps (Full Workflow)
-
-Follow this path when you want to build, push, and deploy the application yourself.
-
-### 0. Start or Create the Local k3d Cluster
-Use the course default cluster name:
-```bash
-k3d cluster start k3s-default
-```
-
-If the cluster does not exist yet, create it:
-```bash
-k3d cluster create k3s-default --port 8081:80@loadbalancer
-kubectl config use-context k3d-k3s-default
-```
-
-If you already have the cluster, add the Ingress port mapping:
-```bash
-k3d cluster edit k3s-default --port-add 8081:80@loadbalancer
-```
-
-Confirm Kubernetes is reachable before applying manifests:
-```bash
-kubectl get nodes
-```
-
-If `kubectl get nodes` fails with `write: broken pipe` and your kubeconfig shows `server: https://0.0.0.0:<port>`, update the same port to use `127.0.0.1` instead. For example:
-```bash
-kubectl config view --minify
-kubectl config set-cluster k3d-k3s-default --server=https://127.0.0.1:51802
-kubectl get nodes
-```
-
-The port can differ between machines, so keep the port from your own kubeconfig.
-
-### 1. Login to Docker Hub
-First, authenticate with Docker Hub:
-```bash
-docker login -u elarsaks
-```
-
-### 2. Build the Docker Image
-Build the image with your Docker Hub username:
-```bash
-docker build -t elarsaks/log-output:1.11.0 ./log_output
-```
-
-### 3. Push to Docker Hub
-Push the image to Docker Hub so Kubernetes can pull it:
-```bash
-docker push elarsaks/log-output:1.11.0
-```
-
-### 4. Apply Kubernetes Manifest
-Deploy using the declarative manifest (from the repository root):
-```bash
-kubectl apply -f exercises/manifests/namespace.yaml
-kubectl apply -f ping_pong/manifests/deployment.yaml
-kubectl apply -f log_output/manifests/deployment.yaml
-```
-
-If you are already inside the `log_output/` directory you can drop the `log_output/` prefix.
-
-Output:
-```
-deployment.apps/log-output configured
-service/log-output configured
-ingress.networking.k8s.io/log-output configured
-```
-
-### 5. Restart Deployment to Confirm Fresh Pods
-```bash
-kubectl rollout restart deployment/log-output -n exercises
-```
-
-This guarantees the pod is recreated from the latest manifest definition.
-
-### 6. Verify Deployment
-```bash
-kubectl get deployments -n exercises
-```
-
-Output:
-```
-NAME         READY   UP-TO-DATE   AVAILABLE   AGE
-log-output   1/1     1            1           46s
-```
-
-### 7. View Application Logs
-View the application logs:
-```bash
-kubectl logs -f deployment/log-output -n exercises -c log-writer
-kubectl logs -f deployment/log-output -n exercises -c log-server
-```
-
-Example output:
-```
-> log_output@1.1.0 start
-> node index.js
-
-App started. Stored value: 2e72edec-87b9-4c14-bfe9-0348828edbe3
-Server started in port 3000
-2025-11-08T19:21:02.462Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
-2025-11-08T19:21:07.468Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
-2025-11-08T19:21:12.479Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
-2025-11-08T19:21:17.486Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
-2025-11-08T19:21:22.493Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
-2025-11-08T19:21:27.498Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
-2025-11-08T19:21:32.500Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
-```
-
-### 8. Access Through Ingress
-Open either endpoint in a browser:
-```bash
-http://localhost:8081/
-http://localhost:8081/status
-```
-
-Example response:
-```text
-2025-11-08T19:21:37.512Z: 2e72edec-87b9-4c14-bfe9-0348828edbe3
-```
-
-## Key Observations
-
-✅ The application successfully:
-- Starts and generates a UUID stored in memory
-- Logs the **same UUID** every 5 seconds
-- Includes ISO 8601 timestamps in each log entry
-- Serves the current status through HTTP
-- Exposes the service through Kubernetes Ingress
-- Runs successfully in a Kubernetes pod
-- Image is pulled from Docker Hub registry
-
-## Why Use Docker Hub?
-- **Registry requirement**: Kubernetes clusters pull images from registries
-- **Portability**: Works across different Kubernetes environments (not just k3d)
-- **Best practice**: Simulates real-world deployment workflows
-- **Course expectation**: Required for the DevOps with Kubernetes MOOC
-
-## Technologies Used
-- **Node.js 22** (Alpine Linux base image)
-- **Docker** for containerization
-- **Docker Hub** for image registry
-- **k3d** for local Kubernetes cluster
-- **kubectl** for Kubernetes management
 
 ## Cleanup
-To remove the deployment:
+
 ```bash
 kubectl delete -f log_output/manifests/deployment.yaml
+kubectl delete -f ping_pong/manifests/deployment.yaml
+kubectl delete -f log_output/manifests/configmap.yaml
 ```
-
-If your shell is already in `log_output/`, omit the leading directory name.

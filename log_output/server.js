@@ -4,6 +4,8 @@ const path = require("node:path");
 
 const port = Number.parseInt(process.env.PORT ?? "", 10) || 3000;
 const file = path.join(process.env.SHARED_DIR ?? "/usr/src/app/files", "log.txt");
+const informationFile = process.env.INFORMATION_FILE ?? "/usr/src/app/config/information.txt";
+const message = process.env.MESSAGE ?? "";
 const pingPongUrl = process.env.PING_PONG_URL ?? "http://ping-pong:3000/pingpong";
 
 const getPingPongs = (callback) => {
@@ -29,12 +31,11 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  fs.readFile(file, "utf8", (error, contents) => {
-    if (error) {
-      res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end("Log is not available yet\n");
-      return;
-    }
+  Promise.all([
+    fs.promises.readFile(file, "utf8"),
+    fs.promises.readFile(informationFile, "utf8"),
+  ]).then(([contents, information]) => {
+    const latestLogLine = contents.trimEnd().split("\n").at(-1);
 
     getPingPongs((pingError, pingPongs) => {
       if (pingError) {
@@ -43,8 +44,16 @@ const server = http.createServer((req, res) => {
         return;
       }
       res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end(`${contents}\nPing / Pongs: ${pingPongs}\n`);
+      res.end(
+        `file content: ${information.trimEnd()}\n` +
+        `env variable: MESSAGE=${message}\n` +
+        `${latestLogLine}\n` +
+        `Ping / Pongs: ${pingPongs}\n`,
+      );
     });
+  }).catch(() => {
+    res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("Configuration or log is not available yet\n");
   });
 });
 

@@ -16,16 +16,22 @@ spec:
       volumes:
         - name: shared-data
           emptyDir: {}
+        - name: log-output-config
+          configMap:
+            name: log-output-config
+            items:
+              - key: information.txt
+                path: information.txt
       containers:
         - name: log-writer
-          image: elarsaks/log-output:1.11.0
+          image: elarsaks/log-output:2.5.0
           imagePullPolicy: IfNotPresent
           command: ["node", "writer.js"]
           volumeMounts:
             - name: shared-data
               mountPath: /usr/src/app/files
         - name: log-server
-          image: elarsaks/log-output:1.11.0
+          image: elarsaks/log-output:2.5.0
           imagePullPolicy: IfNotPresent
           command: ["node", "server.js"]
           env:
@@ -33,11 +39,19 @@ spec:
               value: "3000"
             - name: PING_PONG_URL
               value: "http://ping-pong:3000/pingpong"
+            - name: MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: log-output-config
+                  key: MESSAGE
           ports:
             - containerPort: 3000
           volumeMounts:
             - name: shared-data
               mountPath: /usr/src/app/files
+            - name: log-output-config
+              mountPath: /usr/src/app/config
+              readOnly: true
 ---
 apiVersion: v1
 kind: Service
