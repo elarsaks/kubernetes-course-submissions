@@ -1,10 +1,10 @@
 {
-    "name": "the-project",
-    "version": "2.2.0",
-    "description": "DevOps with Kubernetes exercise 2.2 todo app",
-    "main": "app/index.js",
-    "scripts": {
-        "start": "node app/index.js"
-    },
-    "license": "MIT"
+  "name": "the-project",
+  "version": "2.6.0",
+  "description": "DevOps with Kubernetes exercise 2.6 configured todo app",
+  "main": "app/index.js",
+  "scripts": {
+    "start": "node app/index.js"
+  },
+  "license": "MIT"
 }

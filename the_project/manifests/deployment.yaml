@@ -19,13 +19,11 @@ spec:
             claimName: project-image-claim
       containers:
         - name: the-project
-          image: elarsaks/the-project:2.2.0
+          image: elarsaks/the-project:2.6.0
           imagePullPolicy: IfNotPresent
-          env:
-            - name: PORT
-              value: "3000"
-            - name: TODO_BACKEND_URL
-              value: "http://todo-backend:3000/todos"
+          envFrom:
+            - configMapRef:
+                name: project-config
           ports:
             - containerPort: 3000
           volumeMounts:

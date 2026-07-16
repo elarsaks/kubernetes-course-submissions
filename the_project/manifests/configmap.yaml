@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: project-config
+  namespace: project
+data:
+  NODE_ENV: production
+  PORT: "3000"
+  IMAGE_PATH: /usr/src/app/files/image.jpg
+  IMAGE_URL: https://picsum.photos/1200
+  TODO_BACKEND_URL: http://todo-backend:3000/todos
+  CACHE_DURATION_MS: "600000"
+  MAX_IMAGE_REDIRECTS: "5"
+  MAX_TODO_LENGTH: "140"

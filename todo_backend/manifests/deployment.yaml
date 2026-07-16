@@ -15,11 +15,11 @@ spec:
     spec:
       containers:
         - name: todo-backend
-          image: elarsaks/todo-backend:2.2.0
+          image: elarsaks/todo-backend:2.6.0
           imagePullPolicy: IfNotPresent
-          env:
-            - name: PORT
-              value: "3000"
+          envFrom:
+            - configMapRef:
+                name: project-config
           ports:
             - containerPort: 3000
 ---
