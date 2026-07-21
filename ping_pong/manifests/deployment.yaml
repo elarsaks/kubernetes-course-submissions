@@ -13,15 +13,44 @@ spec:
       labels:
         app: ping-pong
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:18.0
+          command:
+            - sh
+            - -c
+            - until pg_isready -h postgres -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 2; done
+          envFrom:
+            - secretRef:
+                name: ping-pong-postgres
       containers:
         - name: ping-pong
-          image: elarsaks/ping-pong:1.11.1
+          image: elarsaks/ping-pong:2.7.0
           imagePullPolicy: IfNotPresent
           env:
             - name: PORT
               value: "3000"
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+          envFrom:
+            - secretRef:
+                name: ping-pong-postgres
           ports:
             - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
