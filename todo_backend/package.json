@@ -1,8 +1,11 @@
 {
   "name": "todo-backend",
-  "version": "2.6.0",
-  "description": "DevOps with Kubernetes exercise 2.6 configured todo backend",
+  "version": "2.8.0",
+  "description": "PostgreSQL-backed Todo API for DevOps with Kubernetes exercise 2.8",
   "main": "index.js",
   "scripts": { "start": "node index.js" },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
   "license": "MIT"
 }

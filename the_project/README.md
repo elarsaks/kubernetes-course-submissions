@@ -1,35 +1,31 @@
-# Exercise 2.6 - The Project Configuration
+# Exercise 2.8 - The Project, Step 11
 
-The Todo application has no runtime ports, service URLs, image URLs, cache paths, cache timings, redirect limits, or Todo length limits hard-coded in its source code. Kubernetes injects all of them as environment variables from `project-config`.
+The Todo backend stores Todos in PostgreSQL instead of application memory. PostgreSQL runs as a one-replica StatefulSet and receives persistent `local-path` storage through a `volumeClaimTemplates` definition.
 
-The frontend and Todo backend deliberately fail at startup if a required value is missing or if a numeric value is invalid. This prevents an incomplete configuration from being hidden by source-code defaults.
+Database access is configured through Kubernetes resources:
 
-## Configuration
+- `project-config` provides `POSTGRES_HOST` and `POSTGRES_PORT`.
+- `todo-postgres-secret` provides the database name, username, and password.
+- The backend uses parameterized queries when reading and inserting Todos.
 
-`manifests/configmap.yaml` defines:
-
-- `NODE_ENV`
-- `PORT`
-- `IMAGE_PATH`
-- `IMAGE_URL`
-- `TODO_BACKEND_URL`
-- `CACHE_DURATION_MS`
-- `MAX_IMAGE_REDIRECTS`
-- `MAX_TODO_LENGTH`
-
-Both Deployments load the ConfigMap with `envFrom`.
+The backend creates the `todos` table at startup and inserts the three example Todos only when the table is empty. Todos therefore survive replacement of both the backend Pod and the PostgreSQL Pod.
 
 ## Build and deploy
 
-```bash
-docker build -t elarsaks/the-project:2.6.0 ./the_project
-docker build -t elarsaks/todo-backend:2.6.0 ./todo_backend
-docker push elarsaks/the-project:2.6.0
-docker push elarsaks/todo-backend:2.6.0
+From the repository root:
 
-kubectl apply -f the_project/manifests/persistentvolume.yaml
+```bash
+docker build -t elarsaks/the-project:2.8.0 ./the_project
+docker build -t elarsaks/todo-backend:2.8.0 ./todo_backend
+docker push elarsaks/the-project:2.8.0
+docker push elarsaks/todo-backend:2.8.0
+
 kubectl apply -f the_project/manifests/namespace.yaml
 kubectl apply -f the_project/manifests/configmap.yaml
+kubectl apply -f todo_backend/manifests/postgres.yaml
+kubectl rollout status statefulset/todo-postgres -n project
+
+kubectl apply -f the_project/manifests/persistentvolume.yaml
 kubectl apply -f the_project/manifests/persistentvolumeclaim.yaml
 kubectl apply -f todo_backend/manifests/deployment.yaml
 kubectl apply -f the_project/manifests/deployment.yaml
@@ -37,16 +33,31 @@ kubectl rollout status deployment/todo-backend -n project
 kubectl rollout status deployment/the-project -n project
 ```
 
-Open `http://localhost:8081/` to view the Todo application.
+Open `http://localhost:8081/` to view and create Todos.
 
-## Verify configuration
+## Verify database persistence
+
+Create a Todo through the UI, then inspect the database:
 
 ```bash
-kubectl exec deployment/the-project -n project -- printenv | \
-  grep -E '^(NODE_ENV|PORT|IMAGE_PATH|IMAGE_URL|TODO_BACKEND_URL|CACHE_DURATION_MS|MAX_IMAGE_REDIRECTS|MAX_TODO_LENGTH)='
+kubectl exec -n project todo-postgres-0 -- \
+  psql -U todo -d todos -c 'SELECT id, content FROM todos ORDER BY id;'
+```
 
-kubectl exec deployment/todo-backend -n project -- printenv | \
-  grep -E '^(NODE_ENV|PORT|MAX_TODO_LENGTH)='
+Restart PostgreSQL and confirm that the rows remain:
+
+```bash
+kubectl delete pod todo-postgres-0 -n project
+kubectl wait --for=condition=Ready pod/todo-postgres-0 -n project --timeout=180s
+kubectl exec -n project todo-postgres-0 -- \
+  psql -U todo -d todos -c 'SELECT id, content FROM todos ORDER BY id;'
+```
+
+Restart the backend and refresh the UI to confirm that its in-memory lifecycle does not affect the Todos:
+
+```bash
+kubectl delete pod -n project -l app=todo-backend
+kubectl rollout status deployment/todo-backend -n project --timeout=180s
 ```
 
 ## Cleanup
@@ -54,9 +65,15 @@ kubectl exec deployment/todo-backend -n project -- printenv | \
 ```bash
 kubectl delete -f the_project/manifests/deployment.yaml
 kubectl delete -f todo_backend/manifests/deployment.yaml
+kubectl delete -f todo_backend/manifests/postgres.yaml
 kubectl delete -f the_project/manifests/persistentvolumeclaim.yaml
 kubectl delete -f the_project/manifests/configmap.yaml
-kubectl delete -f the_project/manifests/namespace.yaml
 kubectl delete -f the_project/manifests/persistentvolume.yaml
-docker exec k3d-k3s-default-server-0 rm -rf /tmp/kube-project
+```
+
+Deleting the StatefulSet intentionally leaves its database claim and the `project` namespace behind. Delete them separately only when the Todo data is no longer needed:
+
+```bash
+kubectl delete pvc todo-postgres-data-todo-postgres-0 -n project
+kubectl delete -f the_project/manifests/namespace.yaml
 ```
