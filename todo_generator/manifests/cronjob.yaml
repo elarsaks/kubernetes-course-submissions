@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: random-wikipedia-todo
+  namespace: project
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        app: random-wikipedia-todo
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          labels:
+            app: random-wikipedia-todo
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: todo-generator
+              image: elarsaks/todo-generator:2.9.0
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: TODO_BACKEND_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: project-config
+                      key: TODO_BACKEND_URL
+                - name: WIKIPEDIA_RANDOM_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: project-config
+                      key: WIKIPEDIA_RANDOM_URL
+                - name: MAX_TODO_LENGTH
+                  valueFrom:
+                    configMapKeyRef:
+                      name: project-config
+                      key: MAX_TODO_LENGTH
+                - name: MAX_WIKIPEDIA_REDIRECT_ATTEMPTS
+                  valueFrom:
+                    configMapKeyRef:
+                      name: project-config
+                      key: MAX_WIKIPEDIA_REDIRECT_ATTEMPTS
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 1000
+                runAsGroup: 1000
+                capabilities:
+                  drop:
+                    - ALL

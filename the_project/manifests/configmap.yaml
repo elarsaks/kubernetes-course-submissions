@@ -9,6 +9,8 @@ data:
   IMAGE_PATH: /usr/src/app/files/image.jpg
   IMAGE_URL: https://picsum.photos/1200
   TODO_BACKEND_URL: http://todo-backend:3000/todos
+  WIKIPEDIA_RANDOM_URL: https://en.wikipedia.org/wiki/Special:Random
+  MAX_WIKIPEDIA_REDIRECT_ATTEMPTS: "5"
   POSTGRES_HOST: todo-postgres
   POSTGRES_PORT: "5432"
   CACHE_DURATION_MS: "600000"
