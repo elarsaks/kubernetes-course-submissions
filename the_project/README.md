@@ -1,79 +1,62 @@
-# Exercise 2.8 - The Project, Step 11
+# Exercise 2.9 - The Project, Step 12
 
-The Todo backend stores Todos in PostgreSQL instead of application memory. PostgreSQL runs as a one-replica StatefulSet and receives persistent `local-path` storage through a `volumeClaimTemplates` definition.
+The Project includes an hourly Kubernetes CronJob that creates a Todo in the form:
 
-Database access is configured through Kubernetes resources:
+```text
+Read https://en.wikipedia.org/wiki/Example_article
+```
 
-- `project-config` provides `POSTGRES_HOST` and `POSTGRES_PORT`.
-- `todo-postgres-secret` provides the database name, username, and password.
-- The backend uses parameterized queries when reading and inserting Todos.
+Each Job requests `https://en.wikipedia.org/wiki/Special:Random` without following redirects, reads the article URL from the `Location` response header, and posts the resulting Todo to the existing Todo backend. If an unusually long article URL exceeds the configured Todo length, the generator requests another random article.
 
-The backend creates the `todos` table at startup and inserts the three example Todos only when the table is empty. Todos therefore survive replacement of both the backend Pod and the PostgreSQL Pod.
+The CronJob uses `project-config` for its backend URL, Wikipedia URL, Todo length, and retry limit. It runs at minute zero of every hour, forbids overlapping runs, and retains a small Job history for inspection.
 
 ## Build and deploy
 
-From the repository root:
+Starting from a running exercise 2.8 deployment, build and publish the generator:
 
 ```bash
-docker build -t elarsaks/the-project:2.8.0 ./the_project
-docker build -t elarsaks/todo-backend:2.8.0 ./todo_backend
-docker push elarsaks/the-project:2.8.0
-docker push elarsaks/todo-backend:2.8.0
+docker build -t elarsaks/todo-generator:2.9.0 ./todo_generator
+docker push elarsaks/todo-generator:2.9.0
 
-kubectl apply -f the_project/manifests/namespace.yaml
 kubectl apply -f the_project/manifests/configmap.yaml
-kubectl apply -f todo_backend/manifests/postgres.yaml
-kubectl rollout status statefulset/todo-postgres -n project
-
-kubectl apply -f the_project/manifests/persistentvolume.yaml
-kubectl apply -f the_project/manifests/persistentvolumeclaim.yaml
-kubectl apply -f todo_backend/manifests/deployment.yaml
-kubectl apply -f the_project/manifests/deployment.yaml
-kubectl rollout status deployment/todo-backend -n project
-kubectl rollout status deployment/the-project -n project
+kubectl apply -f todo_generator/manifests/cronjob.yaml
 ```
 
-Open `http://localhost:8081/` to view and create Todos.
+For k3d development, the image can be imported instead of pushed:
 
-## Verify database persistence
+```bash
+k3d image import elarsaks/todo-generator:2.9.0 -c k3s-default
+```
 
-Create a Todo through the UI, then inspect the database:
+## Verify immediately
+
+Create a one-off Job from the CronJob instead of waiting for the next hour:
+
+```bash
+JOB_NAME="random-wikipedia-todo-manual-$(date +%s)"
+kubectl create job --from=cronjob/random-wikipedia-todo "$JOB_NAME" -n project
+kubectl wait --for=condition=Complete "job/$JOB_NAME" -n project --timeout=180s
+kubectl logs "job/$JOB_NAME" -n project
+```
+
+The log should contain `Created Todo: Read https://en.wikipedia.org/wiki/...`. Confirm that PostgreSQL contains the new Todo:
 
 ```bash
 kubectl exec -n project todo-postgres-0 -- \
-  psql -U todo -d todos -c 'SELECT id, content FROM todos ORDER BY id;'
+  psql -U todo -d todos -c \
+  "SELECT id, content FROM todos WHERE content LIKE 'Read https://en.wikipedia.org/wiki/%' ORDER BY id DESC LIMIT 5;"
 ```
 
-Restart PostgreSQL and confirm that the rows remain:
+Inspect the hourly schedule and Job history:
 
 ```bash
-kubectl delete pod todo-postgres-0 -n project
-kubectl wait --for=condition=Ready pod/todo-postgres-0 -n project --timeout=180s
-kubectl exec -n project todo-postgres-0 -- \
-  psql -U todo -d todos -c 'SELECT id, content FROM todos ORDER BY id;'
-```
-
-Restart the backend and refresh the UI to confirm that its in-memory lifecycle does not affect the Todos:
-
-```bash
-kubectl delete pod -n project -l app=todo-backend
-kubectl rollout status deployment/todo-backend -n project --timeout=180s
+kubectl get cronjob random-wikipedia-todo -n project
+kubectl get jobs -n project -l app=random-wikipedia-todo
 ```
 
 ## Cleanup
 
 ```bash
-kubectl delete -f the_project/manifests/deployment.yaml
-kubectl delete -f todo_backend/manifests/deployment.yaml
-kubectl delete -f todo_backend/manifests/postgres.yaml
-kubectl delete -f the_project/manifests/persistentvolumeclaim.yaml
-kubectl delete -f the_project/manifests/configmap.yaml
-kubectl delete -f the_project/manifests/persistentvolume.yaml
-```
-
-Deleting the StatefulSet intentionally leaves its database claim and the `project` namespace behind. Delete them separately only when the Todo data is no longer needed:
-
-```bash
-kubectl delete pvc todo-postgres-data-todo-postgres-0 -n project
-kubectl delete -f the_project/manifests/namespace.yaml
+kubectl delete -f todo_generator/manifests/cronjob.yaml
+kubectl delete job "$JOB_NAME" -n project
 ```
