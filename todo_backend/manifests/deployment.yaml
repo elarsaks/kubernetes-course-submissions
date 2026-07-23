@@ -27,7 +27,7 @@ spec:
                 name: todo-postgres-secret
       containers:
         - name: todo-backend
-          image: elarsaks/todo-backend:2.8.0
+          image: elarsaks/todo-backend:2.10.0
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:

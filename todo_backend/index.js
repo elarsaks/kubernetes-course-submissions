@@ -1,5 +1,6 @@
 const http = require("node:http");
 const { Pool } = require("pg");
+const { formatTodoSubmissionLog, validateTodo } = require("./todo");
 
 const requireEnv = (name) => {
   const value = process.env[name];
@@ -52,6 +53,17 @@ const sendJson = (res, status, value) => {
   res.end(JSON.stringify(value));
 };
 
+const logTodoSubmission = (level, details) => {
+  const message = formatTodoSubmissionLog(level, details);
+  if (level === "error") {
+    console.error(message);
+  } else if (level === "warn") {
+    console.warn(message);
+  } else {
+    console.log(message);
+  }
+};
+
 const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/healthz") {
     sendText(res, 200, "ok");
@@ -87,24 +99,54 @@ const server = http.createServer(async (req, res) => {
     try {
       body = JSON.parse(await readBody(req));
     } catch {
+      logTodoSubmission("warn", {
+        outcome: "rejected",
+        reason: "invalid_json",
+        status: 400,
+      });
       sendText(res, 400, "Invalid JSON");
       return;
     }
 
-    const content = typeof body.content === "string" ? body.content.trim() : "";
-    if (!content || content.length > maxTodoLength) {
+    const validation = validateTodo(body?.content, maxTodoLength);
+    if (!validation.valid) {
+      logTodoSubmission("warn", {
+        outcome: "rejected",
+        reason: validation.reason,
+        content: validation.content,
+        length: validation.length,
+        maxLength: maxTodoLength,
+        status: 400,
+      });
       sendText(res, 400, `Todo must contain 1–${maxTodoLength} characters`);
       return;
     }
 
+    const { content } = validation;
     try {
       const result = await database.query(
         "INSERT INTO todos (content) VALUES ($1) RETURNING id, content",
         [content],
       );
+      logTodoSubmission("info", {
+        outcome: "accepted",
+        todoId: result.rows[0].id,
+        content,
+        length: validation.length,
+        maxLength: maxTodoLength,
+        status: 201,
+      });
       sendJson(res, 201, result.rows[0]);
     } catch (error) {
       console.error("Could not save Todo", error);
+      logTodoSubmission("error", {
+        outcome: "failed",
+        reason: "database_unavailable",
+        content,
+        length: validation.length,
+        maxLength: maxTodoLength,
+        status: 503,
+      });
       sendText(res, 503, "Database unavailable");
     }
     return;

@@ -1,62 +1,80 @@
-# Exercise 2.9 - The Project, Step 12
+# Exercise 2.10 - The Project, Step 13
 
-The Project includes an hourly Kubernetes CronJob that creates a Todo in the form:
+The Todo backend writes a structured JSON log for every Todo submission. Accepted, rejected, and database-failed submissions use the `todo_submission` event name and include the submitted content, character count, outcome, and HTTP status. Loki can therefore collect the container output and Grafana can show both successful Todos and messages rejected by backend validation.
 
-```text
-Read https://en.wikipedia.org/wiki/Example_article
-```
-
-Each Job requests `https://en.wikipedia.org/wiki/Special:Random` without following redirects, reads the article URL from the `Location` response header, and posts the resulting Todo to the existing Todo backend. If an unusually long article URL exceeds the configured Todo length, the generator requests another random article.
-
-The CronJob uses `project-config` for its backend URL, Wikipedia URL, Todo length, and retry limit. It runs at minute zero of every hour, forbids overlapping runs, and retains a small Job history for inspection.
+The backend independently enforces the configured `MAX_TODO_LENGTH` of 140 characters. The HTML input limit remains a convenience for browser users, but API clients cannot bypass the backend limit. PostgreSQL also retains its `VARCHAR(140)` constraint.
 
 ## Build and deploy
 
-Starting from a running exercise 2.8 deployment, build and publish the generator:
+Starting from a running exercise 2.9 deployment, build and publish the updated backend:
 
 ```bash
-docker build -t elarsaks/todo-generator:2.9.0 ./todo_generator
-docker push elarsaks/todo-generator:2.9.0
+docker build -t elarsaks/todo-backend:2.10.0 ./todo_backend
+docker push elarsaks/todo-backend:2.10.0
 
 kubectl apply -f the_project/manifests/configmap.yaml
-kubectl apply -f todo_generator/manifests/cronjob.yaml
+kubectl apply -f todo_backend/manifests/deployment.yaml
+kubectl rollout status deployment/todo-backend -n project
 ```
 
-For k3d development, the image can be imported instead of pushed:
+For k3d development, import the image instead of pushing it:
 
 ```bash
-k3d image import elarsaks/todo-generator:2.9.0 -c k3s-default
+k3d image import elarsaks/todo-backend:2.10.0 -c k3s-default
 ```
 
-## Verify immediately
+## Verify request logging and validation
 
-Create a one-off Job from the CronJob instead of waiting for the next hour:
+Forward the backend service to a separate local port:
 
 ```bash
-JOB_NAME="random-wikipedia-todo-manual-$(date +%s)"
-kubectl create job --from=cronjob/random-wikipedia-todo "$JOB_NAME" -n project
-kubectl wait --for=condition=Complete "job/$JOB_NAME" -n project --timeout=180s
-kubectl logs "job/$JOB_NAME" -n project
+kubectl port-forward -n project svc/todo-backend 3001:3000
 ```
 
-The log should contain `Created Todo: Read https://en.wikipedia.org/wiki/...`. Confirm that PostgreSQL contains the new Todo:
+In another terminal, submit an allowed Todo and then a 141-character Todo:
 
 ```bash
-kubectl exec -n project todo-postgres-0 -- \
-  psql -U todo -d todos -c \
-  "SELECT id, content FROM todos WHERE content LIKE 'Read https://en.wikipedia.org/wiki/%' ORDER BY id DESC LIMIT 5;"
+curl -i http://localhost:3001/todos \
+  -H 'Content-Type: application/json' \
+  --data '{"content":"Observe this Todo"}'
+
+node -e 'process.stdout.write(JSON.stringify({content: "x".repeat(141)}))' | \
+  curl -i http://localhost:3001/todos \
+    -H 'Content-Type: application/json' \
+    --data-binary @-
 ```
 
-Inspect the hourly schedule and Job history:
+The first request returns `201 Created`. The oversized request returns `400 Bad Request` with:
+
+```text
+Todo must contain 1–140 characters
+```
+
+The same events are visible directly in the Pod logs:
 
 ```bash
-kubectl get cronjob random-wikipedia-todo -n project
-kubectl get jobs -n project -l app=random-wikipedia-todo
+kubectl logs -n project deployment/todo-backend --tail=20
 ```
 
-## Cleanup
+After installing the course monitoring stack and opening Grafana's Loki datasource, show every backend Todo submission with:
+
+```logql
+{namespace="project"} |= "todo_submission"
+```
+
+Show only rejected submissions with:
+
+```logql
+{namespace="project"} |= "todo_submission" |= "rejected"
+```
+
+The rejected JSON log includes `"reason":"too_long"`, the attempted `content`, `"length":141`, `"maxLength":140`, and `"status":400`.
+
+## Run backend tests
 
 ```bash
-kubectl delete -f todo_generator/manifests/cronjob.yaml
-kubectl delete job "$JOB_NAME" -n project
+cd todo_backend
+npm test
 ```
+
+The tests cover the 140/141-character boundary, trimming, Unicode character counting, and single-line JSON log formatting.
