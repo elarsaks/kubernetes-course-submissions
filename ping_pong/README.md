@@ -1,72 +1,39 @@
-# Exercise 2.7 - Stateful Applications
+# Exercise 3.2 - Back to Ingress
 
-The Ping-pong application stores its counter in PostgreSQL. PostgreSQL runs as a one-replica StatefulSet and receives a dedicated, dynamically provisioned `local-path` PersistentVolumeClaim from its `volumeClaimTemplates` definition.
+The Ping-pong application is deployed to Google Kubernetes Engine behind the
+shared Ingress. Requests to `/pingpong` are routed to the `ping-pong` NodePort
+Service and atomically increment the counter stored in PostgreSQL.
 
-Each `GET /pingpong` request atomically increments the database counter and returns its previous value:
+The application also returns HTTP 200 from `/`. GKE Ingress checks that path
+even though external Ping-pong traffic is routed to `/pingpong`.
 
-```text
-pong 0
-pong 1
-pong 2
-```
-
-The database-backed update prevents concurrent requests from losing increments. The counter survives replacement of both the Ping-pong Pod and the PostgreSQL Pod.
-
-## Build and deploy
+## Build
 
 From the repository root:
 
 ```bash
-docker build -t elarsaks/ping-pong:2.7.0 ./ping_pong
-docker push elarsaks/ping-pong:2.7.0
-
-kubectl apply -f exercises/manifests/namespace.yaml
-kubectl apply -f ping_pong/manifests/postgres.yaml
-kubectl rollout status statefulset/postgres -n exercises
-kubectl apply -f ping_pong/manifests/deployment.yaml
-kubectl apply -f log_output/manifests/configmap.yaml
-kubectl apply -f log_output/manifests/deployment.yaml
-kubectl rollout status deployment/ping-pong -n exercises
+docker buildx build --platform linux/amd64 \
+  -t elarsaks/ping-pong:3.2.0 --push ./ping_pong
 ```
 
-The PostgreSQL Service is headless, giving the StatefulSet Pod a stable network identity. An init container keeps Ping-pong from starting until PostgreSQL accepts connections; the application also retries its initial database setup.
+## Deploy
+
+The complete deployment steps are documented in `log_output/README.md` because
+Log Output, Ping-pong, PostgreSQL, and their shared Ingress are deployed
+together for this exercise.
 
 ## Verify
 
-Call the application through the existing Ingress:
+Replace `INGRESS_IP` with the address shown by `kubectl get ingress`:
 
 ```bash
-curl http://localhost:8081/pingpong
-curl http://localhost:8081/pingpong
-curl http://localhost:8081/pingpong
+curl http://INGRESS_IP/pingpong
+curl http://INGRESS_IP/pingpong
 ```
 
-Inspect the stored value directly:
+Expected responses:
 
-```bash
-kubectl exec -n exercises postgres-0 -- \
-  psql -U pingpong -d pingpong -c 'SELECT counter FROM ping_pong_counter;'
-```
-
-Delete PostgreSQL and confirm that the StatefulSet recreates it with the same claim and counter:
-
-```bash
-kubectl delete pod postgres-0 -n exercises
-kubectl rollout status statefulset/postgres -n exercises
-curl http://localhost:8081/pingpong
-kubectl get pvc -n exercises
-```
-
-## Cleanup
-
-```bash
-kubectl delete -f log_output/manifests/deployment.yaml
-kubectl delete -f ping_pong/manifests/deployment.yaml
-kubectl delete -f ping_pong/manifests/postgres.yaml
-```
-
-Deleting the StatefulSet intentionally leaves `postgres-data-postgres-0` behind. Delete that claim separately only when the counter data is no longer needed:
-
-```bash
-kubectl delete pvc postgres-data-postgres-0 -n exercises
+```text
+pong 0
+pong 1
 ```

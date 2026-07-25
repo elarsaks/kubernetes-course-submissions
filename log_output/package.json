@@ -1,7 +1,7 @@
 {
     "name": "log_output",
-    "version": "2.5.0",
-    "description": "A two-container log writer and HTTP server",
+    "version": "3.2.0",
+    "description": "Log Output application for DevOps with Kubernetes exercise 3.2",
     "main": "index.js",
     "scripts": {
         "start": "node index.js"
