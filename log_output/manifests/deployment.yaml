@@ -24,14 +24,14 @@ spec:
                 path: information.txt
       containers:
         - name: log-writer
-          image: elarsaks/log-output:2.5.0
+          image: elarsaks/log-output:3.2.0
           imagePullPolicy: IfNotPresent
           command: ["node", "writer.js"]
           volumeMounts:
             - name: shared-data
               mountPath: /usr/src/app/files
         - name: log-server
-          image: elarsaks/log-output:2.5.0
+          image: elarsaks/log-output:3.2.0
           imagePullPolicy: IfNotPresent
           command: ["node", "server.js"]
           env:
@@ -59,7 +59,7 @@ metadata:
   name: log-output
   namespace: exercises
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: log-output
   ports:
