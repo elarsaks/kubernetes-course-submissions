@@ -11,7 +11,7 @@ const database = new Pool({
 });
 
 const server = http.createServer(async (req, res) => {
-  if (req.method === "GET" && (req.url === "/" || req.url === "/healthz")) {
+  if (req.method === "GET" && req.url === "/healthz") {
     res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
     res.end("ok\n");
     return;
@@ -30,7 +30,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method !== "GET" || req.url !== "/pingpong") {
+  if (req.method !== "GET" || req.url !== "/") {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
     res.end("Not found\n");
     return;

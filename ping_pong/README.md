@@ -1,15 +1,20 @@
-# Exercise 3.3 - To the Gateway
+# Exercise 3.4 - Rewritten Routing
 
-The Ping-pong application is deployed to Google Kubernetes Engine behind the
-shared Gateway API load balancer. The `HTTPRoute` sends requests for
-`/pingpong` to the `ping-pong` ClusterIP Service, where each request atomically
-increments the counter stored in PostgreSQL.
+The Ping-pong application exposes its counter at `/` and has no knowledge of
+the public `/pingpong` path. The shared Gateway API `HTTPRoute` matches
+`/pingpong`, rewrites the upstream path to `/`, and sends the request to the
+`ping-pong` ClusterIP Service.
 
-Route rewriting is introduced in the next exercise. For exercise 3.3, the
-application itself still handles `/pingpong`.
+Each request atomically increments the counter stored in PostgreSQL.
 
-The application code is unchanged from exercise 3.2, so the deployment reuses
-the existing `elarsaks/ping-pong:3.2.0` image.
+## Build and push
+
+From the repository root:
+
+```bash
+docker buildx build --platform linux/amd64 \
+  -t elarsaks/ping-pong:3.4.0 --push ./ping_pong
+```
 
 ## Deploy
 
@@ -19,16 +24,27 @@ and the shared HTTPRoute are deployed together.
 
 ## Verify
 
-Replace `GATEWAY_IP` with the address shown by `kubectl get gateway`:
+Externally, replace `GATEWAY_IP` with the address shown by
+`kubectl get gateway`:
 
 ```bash
-curl http://GATEWAY_IP/pingpong
-curl http://GATEWAY_IP/pingpong
+curl "http://${GATEWAY_IP}/pingpong"
+curl "http://${GATEWAY_IP}/pingpong"
 ```
 
-Expected responses:
+The Gateway rewrites both requests to `/` before forwarding them to Ping-pong.
+The responses contain increasing counter values, for example:
 
 ```text
-pong 0
-pong 1
+pong 12
+pong 13
+```
+
+The exact values depend on the counter already stored in PostgreSQL.
+
+Inside the cluster, Ping-pong responds at its application-level root path:
+
+```bash
+kubectl exec deployment/log-output -n exercises -c log-server -- \
+  node -e 'fetch("http://ping-pong:3000/").then(async r => console.log(r.status, await r.text()))'
 ```
