@@ -30,8 +30,8 @@ spec:
         - type: URLRewrite
           urlRewrite:
             path:
-              type: ReplaceFullPath
-              replaceFullPath: /
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
       backendRefs:
         - name: ping-pong
           port: 3000
