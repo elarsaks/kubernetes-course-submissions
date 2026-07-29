@@ -1,80 +1,98 @@
-# Exercise 3.3 - To the Gateway
+# Exercise 3.4 - Rewritten Routing
 
 Log Output and Ping-pong are deployed to Google Kubernetes Engine behind a
 shared Gateway API load balancer:
 
-- `/` is routed to the `log-output` ClusterIP Service.
-- `/pingpong` is routed to the `ping-pong` ClusterIP Service.
+- `/` is routed unchanged to the `log-output` ClusterIP Service.
+- `/pingpong` is rewritten to `/` and routed to the `ping-pong` ClusterIP
+  Service.
 
-The `Gateway` uses GKE's `gke-l7-global-external-managed` GatewayClass. An
-`HTTPRoute` attached to it defines the two path-based routing rules. Route
-rewriting is intentionally not used in this exercise, so Ping-pong continues
-to handle `/pingpong` itself.
+Ping-pong no longer needs to know its cluster-level public path. It exposes its
+counter at `/`, while the `HTTPRoute` owns the external `/pingpong` path and
+rewrites the request before proxying it upstream.
 
-The application code is unchanged from exercise 3.2, so the deployment reuses
-the existing `3.2.0` container images.
+Log Output also calls Ping-pong at its internal root URL,
+`http://ping-pong:3000/`.
+
+## Build and push
+
+Only Ping-pong application code changed for this exercise. From the repository
+root:
+
+```bash
+docker buildx build --platform linux/amd64 \
+  -t elarsaks/ping-pong:3.4.0 --push ./ping_pong
+```
+
+The Log Output deployment continues to use the unchanged
+`elarsaks/log-output:3.2.0` image.
 
 ## Deploy to GKE
 
-Configure `kubectl` for the GKE cluster and enable the Gateway API:
+Configure `kubectl` for the GKE cluster and confirm that Gateway API is
+enabled:
 
 ```bash
 gcloud container clusters get-credentials dwk-cluster --zone=europe-north1-b
-gcloud container clusters update dwk-cluster \
-  --location=europe-north1-b \
-  --gateway-api=standard
+kubectl get gatewayclass gke-l7-global-external-managed
 ```
 
-Apply the application resources:
+Apply the updated resources:
 
 ```bash
 kubectl apply -f exercises/manifests/namespace.yaml
 kubectl apply -f ping_pong/manifests/postgres.yaml
-kubectl rollout status statefulset/postgres -n exercises
 kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl apply -f log_output/manifests/configmap.yaml
 kubectl apply -f log_output/manifests/deployment.yaml
+kubectl apply -f exercises/manifests/gateway.yaml
+
+kubectl rollout status statefulset/postgres -n exercises
 kubectl rollout status deployment/ping-pong -n exercises
 kubectl rollout status deployment/log-output -n exercises
 ```
 
-If exercise 3.2 is already running in the cluster, remove its Ingress. Then
-apply the Gateway and route:
-
-```bash
-kubectl delete ingress log-output -n exercises --ignore-not-found
-kubectl apply -f exercises/manifests/gateway.yaml
-```
-
-Provisioning the external load balancer and making both backends healthy can
-take several minutes.
-
 ## Verify
 
-Wait until the Gateway is programmed and has an address:
+Wait until the Gateway and updated route are reconciled:
 
 ```bash
-kubectl get gateway exercise-gateway -n exercises --watch
+kubectl wait \
+  --for=condition=Programmed \
+  gateway/exercise-gateway \
+  -n exercises \
+  --timeout=20m
+
+kubectl describe httproute exercise-route -n exercises
 ```
 
-Replace `GATEWAY_IP` with the displayed address:
+Get the external address and test both public routes:
 
 ```bash
-curl http://GATEWAY_IP/
-curl http://GATEWAY_IP/pingpong
-curl http://GATEWAY_IP/pingpong
+GATEWAY_IP="$(kubectl get gateway exercise-gateway \
+  -n exercises \
+  -o jsonpath='{.status.addresses[0].value}')"
+
+curl "http://${GATEWAY_IP}/"
+curl "http://${GATEWAY_IP}/pingpong"
+curl "http://${GATEWAY_IP}/pingpong"
 ```
 
 The root path returns the Log Output response. The Ping-pong requests return
-successive counter values such as `pong 0` and `pong 1`.
+successive counter values.
 
-If the Gateway remains unavailable, inspect the Gateway, route, and Services:
+Verify directly inside the cluster that Ping-pong serves its counter at `/`
+and no longer exposes `/pingpong`:
 
 ```bash
-kubectl describe gateway exercise-gateway -n exercises
-kubectl describe httproute exercise-route -n exercises
-kubectl get pods,services -n exercises
+kubectl exec deployment/log-output -n exercises -c log-server -- \
+  node -e 'fetch("http://ping-pong:3000/").then(async r => console.log(r.status, await r.text()))'
+
+kubectl exec deployment/log-output -n exercises -c log-server -- \
+  node -e 'fetch("http://ping-pong:3000/pingpong").then(async r => console.log(r.status, await r.text()))'
 ```
+
+The first command returns HTTP 200 with `pong N`; the second returns HTTP 404.
 
 ## Cleanup
 

@@ -25,7 +25,7 @@ spec:
                 name: ping-pong-postgres
       containers:
         - name: ping-pong
-          image: elarsaks/ping-pong:3.2.0
+          image: elarsaks/ping-pong:3.4.0
           imagePullPolicy: IfNotPresent
           env:
             - name: PORT
