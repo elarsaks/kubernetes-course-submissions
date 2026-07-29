@@ -1,34 +1,29 @@
-# Exercise 3.2 - Back to Ingress
+# Exercise 3.3 - To the Gateway
 
 The Ping-pong application is deployed to Google Kubernetes Engine behind the
-shared Ingress. Requests to `/pingpong` are routed to the `ping-pong` NodePort
-Service and atomically increment the counter stored in PostgreSQL.
+shared Gateway API load balancer. The `HTTPRoute` sends requests for
+`/pingpong` to the `ping-pong` ClusterIP Service, where each request atomically
+increments the counter stored in PostgreSQL.
 
-The application also returns HTTP 200 from `/`. GKE Ingress checks that path
-even though external Ping-pong traffic is routed to `/pingpong`.
+Route rewriting is introduced in the next exercise. For exercise 3.3, the
+application itself still handles `/pingpong`.
 
-## Build
-
-From the repository root:
-
-```bash
-docker buildx build --platform linux/amd64 \
-  -t elarsaks/ping-pong:3.2.0 --push ./ping_pong
-```
+The application code is unchanged from exercise 3.2, so the deployment reuses
+the existing `elarsaks/ping-pong:3.2.0` image.
 
 ## Deploy
 
-The complete deployment steps are documented in `log_output/README.md` because
-Log Output, Ping-pong, PostgreSQL, and their shared Ingress are deployed
-together for this exercise.
+The complete GKE and Gateway API deployment steps are documented in
+`log_output/README.md` because Log Output, Ping-pong, PostgreSQL, the Gateway,
+and the shared HTTPRoute are deployed together.
 
 ## Verify
 
-Replace `INGRESS_IP` with the address shown by `kubectl get ingress`:
+Replace `GATEWAY_IP` with the address shown by `kubectl get gateway`:
 
 ```bash
-curl http://INGRESS_IP/pingpong
-curl http://INGRESS_IP/pingpong
+curl http://GATEWAY_IP/pingpong
+curl http://GATEWAY_IP/pingpong
 ```
 
 Expected responses:

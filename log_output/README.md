@@ -1,33 +1,33 @@
-# Exercise 3.2 - Back to Ingress
+# Exercise 3.3 - To the Gateway
 
-Log Output and Ping-pong are deployed to Google Kubernetes Engine behind one
-Ingress:
+Log Output and Ping-pong are deployed to Google Kubernetes Engine behind a
+shared Gateway API load balancer:
 
-- `/` is routed to the `log-output` NodePort Service.
-- `/pingpong` is routed to the `ping-pong` NodePort Service.
+- `/` is routed to the `log-output` ClusterIP Service.
+- `/pingpong` is routed to the `ping-pong` ClusterIP Service.
 
-Both applications return HTTP 200 from `/`, allowing the GKE Ingress health
-checks to mark both backends healthy.
+The `Gateway` uses GKE's `gke-l7-global-external-managed` GatewayClass. An
+`HTTPRoute` attached to it defines the two path-based routing rules. Route
+rewriting is intentionally not used in this exercise, so Ping-pong continues
+to handle `/pingpong` itself.
 
-## Build and push
-
-From the repository root:
-
-```bash
-docker buildx build --platform linux/amd64 \
-  -t elarsaks/log-output:3.2.0 --push ./log_output
-
-docker buildx build --platform linux/amd64 \
-  -t elarsaks/ping-pong:3.2.0 --push ./ping_pong
-```
+The application code is unchanged from exercise 3.2, so the deployment reuses
+the existing `3.2.0` container images.
 
 ## Deploy to GKE
 
-Configure `kubectl` for the GKE cluster, then apply the resources:
+Configure `kubectl` for the GKE cluster and enable the Gateway API:
 
 ```bash
 gcloud container clusters get-credentials dwk-cluster --zone=europe-north1-b
+gcloud container clusters update dwk-cluster \
+  --location=europe-north1-b \
+  --gateway-api=standard
+```
 
+Apply the application resources:
+
+```bash
 kubectl apply -f exercises/manifests/namespace.yaml
 kubectl apply -f ping_pong/manifests/postgres.yaml
 kubectl rollout status statefulset/postgres -n exercises
@@ -38,32 +38,41 @@ kubectl rollout status deployment/ping-pong -n exercises
 kubectl rollout status deployment/log-output -n exercises
 ```
 
-The Ingress is included in `log_output/manifests/deployment.yaml`. Provisioning
-its external address and making both backends healthy can take several minutes.
+If exercise 3.2 is already running in the cluster, remove its Ingress. Then
+apply the Gateway and route:
+
+```bash
+kubectl delete ingress log-output -n exercises --ignore-not-found
+kubectl apply -f exercises/manifests/gateway.yaml
+```
+
+Provisioning the external load balancer and making both backends healthy can
+take several minutes.
 
 ## Verify
 
-Wait for the Ingress address:
+Wait until the Gateway is programmed and has an address:
 
 ```bash
-kubectl get ingress -n exercises --watch
+kubectl get gateway exercise-gateway -n exercises --watch
 ```
 
-Replace `INGRESS_IP` with that address:
+Replace `GATEWAY_IP` with the displayed address:
 
 ```bash
-curl http://INGRESS_IP/
-curl http://INGRESS_IP/pingpong
-curl http://INGRESS_IP/pingpong
+curl http://GATEWAY_IP/
+curl http://GATEWAY_IP/pingpong
+curl http://GATEWAY_IP/pingpong
 ```
 
 The root path returns the Log Output response. The Ping-pong requests return
 successive counter values such as `pong 0` and `pong 1`.
 
-If the Ingress remains unavailable, inspect its backends and events:
+If the Gateway remains unavailable, inspect the Gateway, route, and Services:
 
 ```bash
-kubectl describe ingress log-output -n exercises
+kubectl describe gateway exercise-gateway -n exercises
+kubectl describe httproute exercise-route -n exercises
 kubectl get pods,services -n exercises
 ```
 
