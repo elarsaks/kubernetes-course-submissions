@@ -29,6 +29,8 @@ count(kube_pod_info{namespace="prometheus",created_by_kind="StatefulSet"})
 The result is `3`: `prom-alertmanager-0`, `prom-prometheus-server-0`, and
 `prom-prometheus-server-1`.
 
+![Prometheus query showing three StatefulSet-owned Pods](./prometheus-query.png)
+
 The same query can be verified through the Prometheus API:
 
 ```bash
