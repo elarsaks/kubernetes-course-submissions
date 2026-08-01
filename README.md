@@ -36,6 +36,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [3.6. The Project: Automatic Deployment](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.6/the_project)
 - [3.7. The Project: Separate Branch Environments](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.7/the_project)
 - [3.8. The Project: Delete Branch Environments](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.8/the_project)
+- [3.9. The Project: DBaaS vs DIY](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.9/the_project)
 
 ---
 

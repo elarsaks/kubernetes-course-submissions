@@ -1,4 +1,4 @@
-# Exercise 3.8 - The Project, Step 17
+# Exercise 3.9 - DBaaS vs DIY
 
 The Todo application is automatically built, published, and deployed to a
 separate Google Kubernetes Engine namespace for each branch.
@@ -94,3 +94,27 @@ curl -i "http://${PROJECT_IP}/"
 
 A successful deployment returns `HTTP/1.1 200 OK` and the Todo application
 HTML.
+
+## DBaaS vs DIY PostgreSQL
+
+The current project uses a DIY PostgreSQL deployment: a one-replica
+`StatefulSet` with a `ReadWriteOnce` persistent volume claim. A reasonable
+DBaaS alternative on GCP would be Cloud SQL for PostgreSQL.
+
+| Area | DIY PostgreSQL in GKE | DBaaS (Cloud SQL) |
+| --- | --- | --- |
+| Initialization | Apply the StatefulSet, Service, Secret, and PVC manifests. This is quick and fits naturally into the existing Kustomize deployment, but storage, credentials, readiness, and upgrade decisions are ours. | Create a Cloud SQL instance, database, user, network/private-IP connectivity, and Kubernetes Secret. This usually takes more initial configuration and the instance may take longer to provision, but the database server is then ready without running a database Pod. |
+| Cost | There is no separate database service fee. We pay for the GKE node capacity and persistent disk, including capacity reserved for this workload. A small development database can share an existing node cheaply. | We pay for a dedicated Cloud SQL instance, storage, backups, and network egress where applicable. The minimum continuously running instance can cost more than a small DIY database, although it can be stopped or scaled for non-production use depending on the availability requirements. |
+| Maintenance | We handle PostgreSQL image updates, vulnerability patches, resource sizing, disk expansion, monitoring, failed-Pod recovery, and high availability. One replica is a single point of failure, and deleting the PVC can lose the data. | Google handles the database host, PostgreSQL maintenance options, automated failover features, and much of the monitoring and infrastructure work. We still manage schema migrations, users, application compatibility, costs, and the chosen availability tier. |
+| Backups and restore | We must arrange them, for example with scheduled `pg_dump` exports to durable object storage plus tested restore procedures, or carefully coordinated volume snapshots. Scheduling, retention, encryption, consistency, and recovery testing are all our responsibility. | Cloud SQL provides configurable automated backups, on-demand backups, and point-in-time recovery when enabled. Creating a restored instance is easier and more repeatable, but retention and recovery still need to be configured, tested, and paid for. Backups should be kept independently when protection from account or region-wide failures is required. |
+| Scaling and availability | Scaling storage or replicas requires Kubernetes and PostgreSQL expertise. A single Pod is simple but does not provide seamless failover. | Vertical scaling, regional availability, and replicas are supported service features, with extra cost and some operational constraints. The service reduces database operations work but adds provider dependence and network configuration. |
+
+For this course project and its small workload, DIY PostgreSQL is the simpler and
+cheaper way to get started because the GKE cluster and deployment pipeline
+already exist. It is also useful for learning StatefulSets and persistent
+storage. For a production application where the data is valuable, the
+maintenance and recovery burden would usually make DBaaS preferable: the
+ongoing service cost buys managed patching and much easier backups, point-in-
+time recovery, and failover. I would choose DBaaS unless minimizing the monthly
+bill or retaining full control of the database infrastructure was more
+important than reducing operational risk.
