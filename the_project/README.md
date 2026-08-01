@@ -1,4 +1,4 @@
-# Exercise 3.9 - DBaaS vs DIY
+# Exercise 3.10 - The Project, Step 18
 
 The Todo application is automatically built, published, and deployed to a
 separate Google Kubernetes Engine namespace for each branch.
@@ -118,3 +118,44 @@ ongoing service cost buys managed patching and much easier backups, point-in-
 time recovery, and failover. I would choose DBaaS unless minimizing the monthly
 bill or retaining full control of the database infrastructure was more
 important than reducing operational risk.
+
+## PostgreSQL backups
+
+The root Kustomization includes the `todo-postgres-backup` CronJob. It runs
+once every 24 hours at midnight UTC, uses `pg_dump --format=custom`, and
+uploads the dump to the `todo/` prefix in a Google Cloud Storage bucket. The
+backup image contains both the PostgreSQL client and the Google Cloud CLI.
+
+The bucket name and service-account key are intentionally supplied at runtime.
+Create the bucket and a service account with the minimum upload and download
+permissions, then create the Kubernetes secrets in the namespace where the
+project is deployed. Do not commit the key file or the generated Secret:
+
+```bash
+kubectl create secret generic storage-sa-key \
+  --namespace project \
+  --from-file=key.json=key.json
+
+kubectl create secret generic storage-backup-config \
+  --namespace project \
+  --from-literal=bucket=my-todo-backups
+```
+
+For a branch environment, replace `project` with that branch's namespace.
+The service-account key is mounted read-only and is used through
+`GOOGLE_APPLICATION_CREDENTIALS`. The CronJob has `concurrencyPolicy: Forbid`
+so a slow backup cannot overlap the next scheduled backup. It retains the
+last three successful and failed Jobs for troubleshooting.
+
+After creating the secrets, verify the schedule and run a one-off test:
+
+```bash
+kubectl get cronjob todo-postgres-backup -n project
+kubectl create job --from=cronjob/todo-postgres-backup todo-postgres-backup-test -n project
+kubectl logs -n project -l job-name=todo-postgres-backup-test --follow
+```
+
+The service account should have only the permissions required for the bucket,
+such as `roles/storage.objectCreator` and `roles/storage.objectViewer`. A
+service-account key is less safe than GKE Workload Identity, so Workload
+Identity is preferable for a production deployment.

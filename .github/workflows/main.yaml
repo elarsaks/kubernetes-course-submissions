@@ -60,6 +60,7 @@ jobs:
             echo "FRONTEND_IMAGE=$image_prefix/the-project:$image_tag"
             echo "BACKEND_IMAGE=$image_prefix/todo-backend:$image_tag"
             echo "GENERATOR_IMAGE=$image_prefix/todo-generator:$image_tag"
+            echo "BACKUP_IMAGE=$image_prefix/todo-postgres-backup:$image_tag"
           } >> "$GITHUB_ENV"
 
       - name: Build images
@@ -67,12 +68,14 @@ jobs:
           docker build --tag "$FRONTEND_IMAGE" ./the_project
           docker build --tag "$BACKEND_IMAGE" ./todo_backend
           docker build --tag "$GENERATOR_IMAGE" ./todo_generator
+          docker build --file ./todo_backend/Dockerfile.backup --tag "$BACKUP_IMAGE" ./todo_backend
 
       - name: Publish images
         run: |
           docker push "$FRONTEND_IMAGE"
           docker push "$BACKEND_IMAGE"
           docker push "$GENERATOR_IMAGE"
+          docker push "$BACKUP_IMAGE"
 
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v3
@@ -85,6 +88,7 @@ jobs:
           kustomize edit set image PROJECT/IMAGE="$FRONTEND_IMAGE"
           kustomize edit set image elarsaks/todo-backend="$BACKEND_IMAGE"
           kustomize edit set image elarsaks/todo-generator="$GENERATOR_IMAGE"
+          kustomize edit set image elarsaks/todo-postgres-backup="$BACKUP_IMAGE"
           kustomize build . | kubectl apply -f -
           kubectl rollout status statefulset/todo-postgres --namespace="$DEPLOY_NAMESPACE" --timeout=10m
           kubectl rollout status deployment/todo-backend --namespace="$DEPLOY_NAMESPACE" --timeout=10m

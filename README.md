@@ -37,6 +37,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [3.7. The Project: Separate Branch Environments](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.7/the_project)
 - [3.8. The Project: Delete Branch Environments](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.8/the_project)
 - [3.9. The Project: DBaaS vs DIY](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.9/the_project)
+- [3.10. The Project: Database Backups](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.10/the_project)
 
 ---
 

@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: todo-postgres-backup
+  namespace: project
+spec:
+  schedule: "0 0 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: todo-postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: elarsaks/todo-postgres-backup:1.0.0
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: PGHOST
+                  value: todo-postgres
+                - name: PGPORT
+                  value: "5432"
+                - name: PGDATABASE
+                  valueFrom:
+                    secretKeyRef:
+                      name: todo-postgres-secret
+                      key: POSTGRES_DB
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: todo-postgres-secret
+                      key: POSTGRES_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: todo-postgres-secret
+                      key: POSTGRES_PASSWORD
+                - name: BACKUP_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: storage-backup-config
+                      key: bucket
+                - name: GOOGLE_APPLICATION_CREDENTIALS
+                  value: /var/secrets/google/key.json
+              volumeMounts:
+                - name: storage-sa-key
+                  mountPath: /var/secrets/google
+                  readOnly: true
+                - name: backup-tmp
+                  mountPath: /tmp/backup
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+                  backup_file="/tmp/backup/todo-${timestamp}.dump"
+                  pg_dump --format=custom --file="$backup_file"
+                  gcloud storage cp "$backup_file" "gs://${BACKUP_BUCKET}/todo/${timestamp}.dump"
+          volumes:
+            - name: storage-sa-key
+              secret:
+                secretName: storage-sa-key
+                items:
+                  - key: key.json
+                    path: key.json
+            - name: backup-tmp
+              emptyDir: {}

@@ -8,6 +8,7 @@ resources:
   - the_project/manifests/deployment.yaml
   - the_project/manifests/persistentvolumeclaim.yaml
   - todo_backend/manifests/postgres.yaml
+  - todo_backend/manifests/backup-cronjob.yaml
   - todo_backend/manifests/deployment.yaml
   - todo_generator/manifests/cronjob.yaml
 
@@ -21,3 +22,6 @@ images:
   - name: elarsaks/todo-generator
     newName: elarsaks/todo-generator
     newTag: 2.9.0
+  - name: elarsaks/todo-postgres-backup
+    newName: elarsaks/todo-postgres-backup
+    newTag: 1.0.0
