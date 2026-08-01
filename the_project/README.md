@@ -1,4 +1,4 @@
-# Exercise 3.10 - The Project, Step 18
+# Exercise 3.11 - The Project, Step 19
 
 The Todo application is automatically built, published, and deployed to a
 separate Google Kubernetes Engine namespace for each branch.
@@ -159,3 +159,26 @@ The service account should have only the permissions required for the bucket,
 such as `roles/storage.objectCreator` and `roles/storage.objectViewer`. A
 service-account key is less safe than GKE Workload Identity, so Workload
 Identity is preferable for a production deployment.
+
+## Resource requests and limits
+
+The project now sets CPU and memory requests and limits for every application
+container. Requests are the resources Kubernetes reserves for scheduling;
+limits cap how much a container may consume. The values are intentionally
+small because the current workload is small, but the limits leave room for
+short CPU or memory spikes:
+
+| Workload | CPU request / limit | Memory request / limit |
+| --- | --- | --- |
+| Frontend | 10m / 250m | 32Mi / 128Mi |
+| Todo backend | 10m / 250m | 32Mi / 128Mi |
+| PostgreSQL | 50m / 500m | 64Mi / 256Mi |
+| Backend PostgreSQL init container | 5m / 50m | 16Mi / 32Mi |
+| Wikipedia generator | 10m / 250m | 32Mi / 128Mi |
+| Database backup | 25m / 500m | 64Mi / 256Mi |
+
+The initial values were chosen after checking the running Pods with
+`kubectl top pods`. The observed steady-state usage was approximately 1--22m
+CPU and 28--44Mi memory, so the requests cover normal usage while the limits
+allow the database and batch jobs to handle brief spikes. They should be
+revisited after observing the application under realistic traffic.

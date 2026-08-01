@@ -20,6 +20,13 @@ spec:
             - sh
             - -c
             - until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 2; done
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
           envFrom:
             - configMapRef:
                 name: project-config
@@ -29,6 +36,13 @@ spec:
         - name: todo-backend
           image: elarsaks/todo-backend:2.10.0
           imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
           envFrom:
             - configMapRef:
                 name: project-config

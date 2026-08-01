@@ -22,6 +22,13 @@ spec:
         - name: the-project
           image: PROJECT/IMAGE
           imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
           envFrom:
             - configMapRef:
                 name: project-config

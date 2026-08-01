@@ -25,6 +25,13 @@ spec:
             - name: todo-generator
               image: elarsaks/todo-generator:2.9.0
               imagePullPolicy: IfNotPresent
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 250m
+                  memory: 128Mi
               env:
                 - name: TODO_BACKEND_URL
                   valueFrom:
