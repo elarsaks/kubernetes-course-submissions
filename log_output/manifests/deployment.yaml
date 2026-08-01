@@ -46,6 +46,12 @@ spec:
                   key: MESSAGE
           ports:
             - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 3000
+            initialDelaySeconds: 2
+            periodSeconds: 5
           volumeMounts:
             - name: shared-data
               mountPath: /usr/src/app/files

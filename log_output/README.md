@@ -1,4 +1,32 @@
-# Exercise 3.4 - Rewritten Routing
+# Exercise 4.1 - Readiness Probe
+
+The Log Output deployment uses a readiness probe on `/status`. The endpoint
+checks that the log files are available and successfully receives a response
+from Ping-pong, so Log Output is not added to its Service until its dependency
+is ready.
+
+Ping-pong uses a readiness probe on `/readyz`. That endpoint runs `SELECT 1`
+against PostgreSQL and returns HTTP 200 only when the database connection is
+available. Without the database, Ping-pong stays unready and Log Output also
+stays unready because it cannot receive a Ping-pong response.
+
+To observe the dependency-aware readiness states, apply the namespace and
+application resources without PostgreSQL:
+
+```bash
+kubectl apply -f exercises/manifests/namespace.yaml
+kubectl apply -f ping_pong/manifests/deployment.yaml
+kubectl apply -f log_output/manifests/configmap.yaml
+kubectl apply -f log_output/manifests/deployment.yaml
+kubectl get pods -n exercises
+```
+
+The Ping-pong pod remains `0/1`, and the Log Output pod remains unready because
+its `/status` probe cannot receive data from Ping-pong. Applying
+`ping_pong/manifests/postgres.yaml` makes the database available; the probes
+then pass automatically and the pods become `1/1` and `2/2` respectively.
+
+## Exercise 3.4 - Rewritten Routing
 
 Log Output and Ping-pong are deployed to Google Kubernetes Engine behind a
 shared Gateway API load balancer:
