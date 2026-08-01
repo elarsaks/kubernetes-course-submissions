@@ -45,11 +45,18 @@ jobs:
 
       - name: Form image names
         run: |
-          safe_branch="$(printf '%s' "$GITHUB_REF_NAME" | tr '/_' '--' | tr -cd '[:alnum:].-' | cut -c1-80)"
+          safe_branch="$(printf '%s' "$GITHUB_REF_NAME" | tr '/_' '--' | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:].-' | cut -c1-80)"
+          namespace_branch="$(printf '%s' "$GITHUB_REF_NAME" | tr '/_' '--' | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-' | cut -c1-50 | sed -E 's/^-+//; s/-+$//')"
+          if [ "$GITHUB_REF_NAME" = "master" ]; then
+            deploy_namespace="project"
+          else
+            deploy_namespace="$namespace_branch"
+          fi
           image_tag="${safe_branch}-${GITHUB_SHA}"
           image_prefix="$REGISTRY/$PROJECT_ID/$REPOSITORY"
           {
             echo "IMAGE_TAG=$image_tag"
+            echo "DEPLOY_NAMESPACE=$deploy_namespace"
             echo "FRONTEND_IMAGE=$image_prefix/the-project:$image_tag"
             echo "BACKEND_IMAGE=$image_prefix/todo-backend:$image_tag"
             echo "GENERATOR_IMAGE=$image_prefix/todo-generator:$image_tag"
@@ -72,11 +79,14 @@ jobs:
 
       - name: Deploy
         run: |
+          kubectl create namespace "$DEPLOY_NAMESPACE" --dry-run=client --output=yaml | kubectl apply -f -
+          kubectl config set-context --current --namespace="$DEPLOY_NAMESPACE"
+          kustomize edit set namespace "$DEPLOY_NAMESPACE"
           kustomize edit set image PROJECT/IMAGE="$FRONTEND_IMAGE"
           kustomize edit set image elarsaks/todo-backend="$BACKEND_IMAGE"
           kustomize edit set image elarsaks/todo-generator="$GENERATOR_IMAGE"
           kustomize build . | kubectl apply -f -
-          kubectl rollout status statefulset/todo-postgres --namespace=project --timeout=10m
-          kubectl rollout status deployment/todo-backend --namespace=project --timeout=10m
-          kubectl rollout status deployment/the-project --namespace=project --timeout=10m
-          kubectl get services --namespace=project -o wide
+          kubectl rollout status statefulset/todo-postgres --namespace="$DEPLOY_NAMESPACE" --timeout=10m
+          kubectl rollout status deployment/todo-backend --namespace="$DEPLOY_NAMESPACE" --timeout=10m
+          kubectl rollout status deployment/the-project --namespace="$DEPLOY_NAMESPACE" --timeout=10m
+          kubectl get services --namespace="$DEPLOY_NAMESPACE" -o wide

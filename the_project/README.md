@@ -1,12 +1,12 @@
-# Exercise 3.6 - The Project, Step 15
+# Exercise 3.7 - The Project, Step 16
 
-The Todo application is automatically built, published, and deployed to
-Google Kubernetes Engine on every push.
+The Todo application is automatically built, published, and deployed to a
+separate Google Kubernetes Engine namespace for each branch.
 
 ## Application
 
-The root Kustomization deploys the complete project into the `project`
-namespace:
+The root Kustomization deploys the complete project into the namespace chosen
+by the workflow:
 
 - Todo frontend
 - Todo backend
@@ -28,11 +28,16 @@ The GitHub Actions workflow in `.github/workflows/main.yaml`:
 3. Pushes commit-tagged images to the `kubernetes-course` Artifact Registry
    repository.
 4. Replaces the Kustomize image mappings with the published image names.
-5. Applies the complete project to `dwk-cluster`.
-6. Waits for PostgreSQL, backend, and frontend rollouts to complete.
+5. Creates a namespace for the branch and sets it as the Kustomize namespace.
+6. Applies the complete project to `dwk-cluster`.
+7. Waits for PostgreSQL, backend, and frontend rollouts to complete.
 
 Image tags contain the branch name and commit SHA, making every deployment
 traceable to its source commit.
+
+The `master` branch is always deployed to the `project` namespace. Other
+branches use a sanitized version of their branch name as the namespace, for
+example `feature/demo` becomes `feature-demo`.
 
 The workflow uses the GitHub environment `GKE_PROJECT` with these environment
 secrets:
@@ -55,6 +60,7 @@ gcloud container clusters get-credentials dwk-cluster \
   --zone=europe-north1-b
 
 kubectl kustomize .
+kubectl create namespace project --dry-run=client --output=yaml | kubectl apply -f -
 kubectl apply -k .
 ```
 
