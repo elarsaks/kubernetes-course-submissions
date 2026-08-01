@@ -1,4 +1,32 @@
-# Exercise 2.10 - The Project, Step 13
+# Exercise 3.5 - The Project, Step 14
+
+## Kustomize and GKE deployment
+
+The complete project is deployed from the repository root using Kustomize.
+The `the_project/` Kustomization defines the frontend, while the root
+Kustomization adds PostgreSQL, the Todo backend, and the scheduled Todo
+generator.
+
+Configure `kubectl` for the GKE cluster, then render and apply the complete
+project configuration:
+
+```bash
+gcloud container clusters get-credentials dwk-cluster --zone=europe-north1-b
+kubectl kustomize .
+kubectl apply -k .
+kubectl rollout status deployment/the-project -n project
+kubectl get all -n project
+```
+
+The image cache and PostgreSQL claims use GKE's `standard-rwo` storage class. The local-node
+PersistentVolume in `manifests/persistentvolume.yaml` is retained for the
+local k3d setup but is intentionally not included in the GKE Kustomizations.
+
+The image mapping is deliberately based on `PROJECT/IMAGE`; the deployment
+pipeline in exercise 3.6 can replace it with the commit-specific Artifact
+Registry image using `kustomize edit set image`.
+
+---
 
 The Todo backend writes a structured JSON log for every Todo submission. Accepted, rejected, and database-failed submissions use the `todo_submission` event name and include the submitted content, character count, outcome, and HTTP status. Loki can therefore collect the container output and Grafana can show both successful Todos and messages rejected by backend validation.
 

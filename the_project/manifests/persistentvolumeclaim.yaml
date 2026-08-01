@@ -2,9 +2,9 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: project-image-claim
-  namespace: project
 spec:
-  storageClassName: project-image
+  # GKE dynamically provisions this volume through the cluster's CSI driver.
+  storageClassName: standard-rwo
   accessModes:
     - ReadWriteOnce
   resources:
