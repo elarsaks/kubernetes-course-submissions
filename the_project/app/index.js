@@ -24,6 +24,7 @@ const todoBackendUrl = requireEnv("TODO_BACKEND_URL");
 const cacheDurationMs = requirePositiveInteger("CACHE_DURATION_MS");
 const maxImageRedirects = requirePositiveInteger("MAX_IMAGE_REDIRECTS");
 const maxTodoLength = requirePositiveInteger("MAX_TODO_LENGTH");
+let isHealthy = true;
 let refreshPromise;
 
 fs.mkdirSync(path.dirname(imagePath), { recursive: true });
@@ -126,6 +127,16 @@ const readBody = (req) => new Promise((resolve, reject) => {
   req.on("error", reject);
 });
 
+const sendText = (res, status, message) => {
+  res.writeHead(status, { "Content-Type": "text/plain; charset=utf-8" });
+  res.end(`${message}\n`);
+};
+
+const sendJson = (res, status, value) => {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(value));
+};
+
 const escapeHtml = (value) => String(value)
   .replaceAll("&", "&amp;")
   .replaceAll("<", "&lt;")
@@ -134,6 +145,41 @@ const escapeHtml = (value) => String(value)
   .replaceAll("'", "&#039;");
 
 const server = http.createServer(async (req, res) => {
+  if (req.method === "POST" && req.url === "/break") {
+    isHealthy = false;
+    sendJson(res, 200, { status: "unhealthy" });
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/healthz") {
+    if (!isHealthy) {
+      sendJson(res, 500, { status: "unhealthy" });
+      return;
+    }
+    sendJson(res, 200, { status: "ok" });
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/readyz") {
+    if (!isHealthy) {
+      sendJson(res, 503, { status: "unhealthy" });
+      return;
+    }
+    try {
+      await requestTodos();
+      sendJson(res, 200, { status: "ok" });
+    } catch (error) {
+      console.error("Todo backend readiness check failed", error);
+      sendJson(res, 503, { status: "Todo backend unavailable" });
+    }
+    return;
+  }
+
+  if (!isHealthy) {
+    sendText(res, 503, "Application is intentionally broken");
+    return;
+  }
+
   if (req.method === "POST" && req.url === "/todos") {
     try {
       const body = await readBody(req);
@@ -189,6 +235,8 @@ const server = http.createServer(async (req, res) => {
       input { flex: 1; min-width: 0; border: 3px solid #4caf50; border-radius: 6px; font-size: 1.3rem; padding: 14px 18px; }
       button { border: 0; border-radius: 6px; background: #4caf50; color: white; cursor: pointer; font-size: 1.3rem; padding: 0 34px; }
       button:hover { background: #3d9641; }
+      .break-button { display: block; margin: 38px auto 0; background: #e05252; padding: 14px 24px; }
+      .break-button:hover { background: #c63f3f; }
       ul { list-style: none; margin: 0; padding: 0; }
       li { background: #fafafa; border-left: 6px solid #4caf50; border-radius: 6px; box-shadow: 0 2px 8px #00000012; font-size: 1.35rem; margin: 16px 0; padding: 22px 28px; }
       @media (max-width: 600px) { form { flex-direction: column; } button { padding: 14px; } }
@@ -203,6 +251,12 @@ const server = http.createServer(async (req, res) => {
     </form>
     <h2>Todos</h2>
     <ul>${todoItems}</ul>
+    <button id="break-button" class="break-button" type="button">break the app</button>
+    <script>
+      document.getElementById("break-button").addEventListener("click", async () => {
+        await fetch("/break", { method: "POST" });
+      });
+    </script>
   </body>
 </html>
 `);

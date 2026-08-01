@@ -34,6 +34,18 @@ spec:
                 name: project-config
           ports:
             - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
           volumeMounts:
             - name: image-cache
               mountPath: /usr/src/app/files
