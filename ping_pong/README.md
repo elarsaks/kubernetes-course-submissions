@@ -24,8 +24,21 @@ Apply the template after Prometheus and the `exercises` namespace are ready:
 
 ```bash
 kubectl apply -f ping_pong/manifests/analysis-template.yaml
+kubectl apply -f ping_pong/manifests/postgres.yaml
+kubectl delete deployment ping-pong -n exercises --ignore-not-found
+kubectl apply -f ping_pong/manifests/deployment.yaml
 kubectl get analysistemplate ping-pong-cpu -n exercises
+kubectl get rollout ping-pong -n exercises
 ```
+
+The delete is a one-time migration step because Kubernetes treats a
+`Deployment` and a `Rollout` as different resource kinds even when they have
+the same name.
+
+The Ping-pong workload is an Argo Rollouts `Rollout` with two replicas. During
+an update, one replica is assigned to the canary, then the CPU analysis runs.
+If the analysis fails, Argo Rollouts aborts the update and scales the stable
+ReplicaSet back to the desired replica count.
 
 ## Application and routing notes
 
