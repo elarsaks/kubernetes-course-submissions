@@ -43,6 +43,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [4.1. Readiness Probe](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.1/log_output)
 - [4.2. The Project, Step 21](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.2/the_project)
 - [4.3. Prometheus](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.3/exercises)
+- [4.4. Your canary](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.4/ping_pong)
 
 ---
 
