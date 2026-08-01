@@ -185,16 +185,23 @@ revisited after observing the application under realistic traffic.
 
 ## GKE application logs
 
-GKE Monitoring was enabled for the cluster by the platform. To find the
-project's application logs, open Google Cloud Console → **Kubernetes Engine**
-→ **Workloads** → `todo-backend` → **Logs**, or use `kubectl logs` directly:
+GKE workload logging is enabled for the cluster. Application output written to
+standard output or standard error is available in Google Cloud Logging as a
+`k8s_container` resource. Open Google Cloud Console → **Logging** → **Logs
+Explorer** and run this query to find accepted Todo submissions from the
+backend:
 
-```bash
-kubectl logs deployment/todo-backend -n project --since=10m
+```text
+resource.type="k8s_container"
+resource.labels.cluster_name="dwk-cluster"
+resource.labels.namespace_name="project"
+resource.labels.container_name="todo-backend"
+jsonPayload.event="todo_submission"
+jsonPayload.outcome="accepted"
 ```
 
-I created a Todo through the project's Ingress and found the corresponding
-structured log entry in the backend container. It records the accepted Todo,
-its ID, and HTTP status `201`:
+The screenshot below was captured from Logs Explorer after creating a new Todo
+through the project's GKE Ingress. The expanded structured log entry shows the
+Todo content, `outcome: "accepted"`, Todo ID, and HTTP status `201`.
 
-![GKE backend log showing a newly created Todo](./gke-todo-log.svg)
+![Google Cloud Logs Explorer showing an accepted Todo submission from GKE](./gke-todo-log.png)
