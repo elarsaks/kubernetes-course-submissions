@@ -98,8 +98,8 @@ const ensureImage = async () => {
   }
 };
 
-const requestTodos = (options = {}, body) => new Promise((resolve, reject) => {
-  const request = clientFor(todoBackendUrl).request(todoBackendUrl, options, (response) => {
+const requestTodos = (options = {}, body, requestUrl = todoBackendUrl) => new Promise((resolve, reject) => {
+  const request = clientFor(requestUrl).request(requestUrl, options, (response) => {
     let contents = "";
     response.setEncoding("utf8");
     response.on("data", (chunk) => { contents += chunk; });
@@ -196,6 +196,23 @@ const server = http.createServer(async (req, res) => {
       console.error("Could not create todo:", error);
       res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
       res.end("Todo backend is not available\n");
+    }
+    return;
+  }
+
+  const updateMatch = req.method === "PUT" && req.url.match(/^\/todos\/(\d+)$/);
+  if (updateMatch) {
+    try {
+      const body = await readBody(req);
+      const updatedTodo = await requestTodos(
+        { method: "PUT", headers: { "Content-Type": "application/json" } },
+        body,
+        `${todoBackendUrl}/${updateMatch[1]}`,
+      );
+      sendJson(res, 200, updatedTodo);
+    } catch (error) {
+      console.error("Could not update todo:", error);
+      sendText(res, 503, "Todo backend is not available");
     }
     return;
   }
