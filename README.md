@@ -34,6 +34,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [3.4. Rewritten Routing](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.4)
 - [3.5. The Project: Kustomize and GKE](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.5/the_project)
 - [3.6. The Project: Automatic Deployment](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.6/the_project)
+- [3.7. The Project: Separate Branch Environments](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.7/the_project)
 
 ---
 

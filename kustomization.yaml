@@ -4,7 +4,6 @@ kind: Kustomization
 namespace: project
 
 resources:
-  - the_project/manifests/namespace.yaml
   - the_project/manifests/configmap.yaml
   - the_project/manifests/deployment.yaml
   - the_project/manifests/persistentvolumeclaim.yaml
