@@ -1,0 +1,51 @@
+name: Delete branch environment
+
+on:
+  delete:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: europe-north1-b
+
+jobs:
+  delete-environment:
+    name: Delete branch namespace
+    if: github.event.ref_type == 'branch' && github.event.ref != 'master'
+    runs-on: ubuntu-latest
+    environment: GKE_PROJECT
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          project_id: ${{ env.PROJECT_ID }}
+          location: ${{ env.GKE_ZONE }}
+
+      - name: Resolve namespace
+        env:
+          DELETED_BRANCH: ${{ github.event.ref }}
+        run: |
+          deploy_namespace="$(printf '%s' "$DELETED_BRANCH" | tr '/_' '--' | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-' | cut -c1-50 | sed -E 's/^-+//; s/-+$//')"
+          if [ -z "$deploy_namespace" ] || [ "$deploy_namespace" = "project" ]; then
+            echo "Refusing to delete unsafe namespace: $deploy_namespace"
+            exit 1
+          fi
+          echo "DEPLOY_NAMESPACE=$deploy_namespace" >> "$GITHUB_ENV"
+
+      - name: Delete namespace
+        run: kubectl delete namespace "$DEPLOY_NAMESPACE" --ignore-not-found

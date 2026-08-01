@@ -1,4 +1,4 @@
-# Exercise 3.7 - The Project, Step 16
+# Exercise 3.8 - The Project, Step 17
 
 The Todo application is automatically built, published, and deployed to a
 separate Google Kubernetes Engine namespace for each branch.
@@ -38,6 +38,15 @@ traceable to its source commit.
 The `master` branch is always deployed to the `project` namespace. Other
 branches use a sanitized version of their branch name as the namespace, for
 example `feature/demo` becomes `feature-demo`.
+
+## Branch cleanup
+
+The `.github/workflows/delete-environment.yaml` workflow listens for deleted
+branches. It ignores tag deletions and `master`, derives the same namespace
+name used by the deployment workflow, and deletes that namespace from GKE.
+
+Deleting a branch therefore removes its Deployments, Services, Ingress, and
+persistent volume claims with the namespace.
 
 The workflow uses the GitHub environment `GKE_PROJECT` with these environment
 secrets:
