@@ -1,4 +1,4 @@
-# Exercise 3.11 - The Project, Step 19
+# Exercise 3.12 - The Project, Step 20
 
 The Todo application is automatically built, published, and deployed to a
 separate Google Kubernetes Engine namespace for each branch.
@@ -182,3 +182,26 @@ The initial values were chosen after checking the running Pods with
 CPU and 28--44Mi memory, so the requests cover normal usage while the limits
 allow the database and batch jobs to handle brief spikes. They should be
 revisited after observing the application under realistic traffic.
+
+## GKE application logs
+
+GKE workload logging is enabled for the cluster. Application output written to
+standard output or standard error is available in Google Cloud Logging as a
+`k8s_container` resource. Open Google Cloud Console → **Logging** → **Logs
+Explorer** and run this query to find accepted Todo submissions from the
+backend:
+
+```text
+resource.type="k8s_container"
+resource.labels.cluster_name="dwk-cluster"
+resource.labels.namespace_name="project"
+resource.labels.container_name="todo-backend"
+jsonPayload.event="todo_submission"
+jsonPayload.outcome="accepted"
+```
+
+The screenshot below was captured from Logs Explorer after creating a new Todo
+through the project's GKE Ingress. The expanded structured log entry shows the
+Todo content, `outcome: "accepted"`, Todo ID, and HTTP status `201`.
+
+![Google Cloud Logs Explorer showing an accepted Todo submission from GKE](./gke-todo-log.png)

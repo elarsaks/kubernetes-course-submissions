@@ -39,6 +39,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [3.9. The Project: DBaaS vs DIY](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.9/the_project)
 - [3.10. The Project: Database Backups](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.10/the_project)
 - [3.11. The Project: Resource Requests and Limits](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.11/the_project)
+- [3.12. The Project: GKE Application Logs](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.12/the_project)
 
 ---
 
