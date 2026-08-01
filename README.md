@@ -42,6 +42,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [3.12. The Project: GKE Application Logs](https://github.com/elarsaks/kubernetes-course-submissions/tree/3.12/the_project)
 - [4.1. Readiness Probe](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.1/log_output)
 - [4.2. The Project, Step 21](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.2/the_project)
+- [4.3. Prometheus](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.3/exercises)
 
 ---
 
