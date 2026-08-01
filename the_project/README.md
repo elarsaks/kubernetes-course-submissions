@@ -1,4 +1,32 @@
-# Exercise 4.2 - The Project, Step 21
+# Exercise 4.5 - The Project, Step 22
+
+The Todo application now supports completing a Todo through
+`PUT /todos/<id>`. The backend persists a `done` boolean with a default of
+`false`, and the frontend displays a **Mark done** button for unfinished
+Todos. Completed Todos are rendered with a strikethrough and a **Done** label.
+
+The API request body is:
+
+```json
+{"done": true}
+```
+
+The backend returns the updated Todo, including `id`, `content`, and `done`.
+Updating an unknown Todo returns `404`, and a non-boolean `done` value returns
+`400`.
+
+## Local verification
+
+After deploying the project, create a Todo and use the returned ID:
+
+```bash
+curl -i -X PUT http://localhost:3000/todos/1 \
+  -H 'Content-Type: application/json' \
+  -d '{"done":true}'
+```
+
+The response should contain `"done":true`. Refreshing the frontend should
+show that Todo with a strikethrough and a **Done** label.
 
 The frontend now exposes Kubernetes health endpoints and has both probes in
 its Deployment:

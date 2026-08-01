@@ -98,8 +98,8 @@ const ensureImage = async () => {
   }
 };
 
-const requestTodos = (options = {}, body) => new Promise((resolve, reject) => {
-  const request = clientFor(todoBackendUrl).request(todoBackendUrl, options, (response) => {
+const requestTodos = (options = {}, body, requestUrl = todoBackendUrl) => new Promise((resolve, reject) => {
+  const request = clientFor(requestUrl).request(requestUrl, options, (response) => {
     let contents = "";
     response.setEncoding("utf8");
     response.on("data", (chunk) => { contents += chunk; });
@@ -200,6 +200,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  const updateMatch = req.method === "PUT" && req.url.match(/^\/todos\/(\d+)$/);
+  if (updateMatch) {
+    try {
+      const body = await readBody(req);
+      const updatedTodo = await requestTodos(
+        { method: "PUT", headers: { "Content-Type": "application/json" } },
+        body,
+        `${todoBackendUrl}/${updateMatch[1]}`,
+      );
+      sendJson(res, 200, updatedTodo);
+    } catch (error) {
+      console.error("Could not update todo:", error);
+      sendText(res, 503, "Todo backend is not available");
+    }
+    return;
+  }
+
   if (req.method !== "GET" || (req.url !== "/" && req.url !== "/image.jpg")) {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
     res.end("Not found\n");
@@ -216,7 +233,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     const todos = await requestTodos();
-    const todoItems = todos.map((todo) => `<li>${escapeHtml(todo.content)}</li>`).join("\n");
+    const todoItems = todos.map((todo) => {
+      const done = todo.done === true;
+      const action = done
+        ? '<span class="done-label">Done</span>'
+        : `<button class="done-button" data-todo-id="${todo.id}" type="button">Mark done</button>`;
+      return `<li class="${done ? "done" : ""}"><span>${escapeHtml(todo.content)}</span>${action}</li>`;
+    }).join("\n");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(`<!doctype html>
 <html lang="en">
@@ -238,7 +261,12 @@ const server = http.createServer(async (req, res) => {
       .break-button { display: block; margin: 38px auto 0; background: #e05252; padding: 14px 24px; }
       .break-button:hover { background: #c63f3f; }
       ul { list-style: none; margin: 0; padding: 0; }
-      li { background: #fafafa; border-left: 6px solid #4caf50; border-radius: 6px; box-shadow: 0 2px 8px #00000012; font-size: 1.35rem; margin: 16px 0; padding: 22px 28px; }
+      li { align-items: center; background: #fafafa; border-left: 6px solid #4caf50; border-radius: 6px; box-shadow: 0 2px 8px #00000012; display: flex; font-size: 1.35rem; gap: 18px; justify-content: space-between; margin: 16px 0; padding: 16px 28px; }
+      li.done { border-left-color: #999; color: #666; }
+      li.done > span:first-child { text-decoration: line-through; }
+      .done-button { background: #1976d2; font-size: 1rem; padding: 12px 18px; }
+      .done-button:hover { background: #125ca5; }
+      .done-label { color: #2e7d32; font-weight: bold; white-space: nowrap; }
       @media (max-width: 600px) { form { flex-direction: column; } button { padding: 14px; } }
     </style>
   </head>
@@ -253,6 +281,16 @@ const server = http.createServer(async (req, res) => {
     <ul>${todoItems}</ul>
     <button id="break-button" class="break-button" type="button">break the app</button>
     <script>
+      document.querySelectorAll(".done-button").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const response = await fetch("/todos/" + button.dataset.todoId, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ done: true }),
+          });
+          if (response.ok) window.location.reload();
+        });
+      });
       document.getElementById("break-button").addEventListener("click", async () => {
         await fetch("/break", { method: "POST" });
       });

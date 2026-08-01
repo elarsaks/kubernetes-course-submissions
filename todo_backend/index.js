@@ -1,6 +1,10 @@
 const http = require("node:http");
 const { Pool } = require("pg");
-const { formatTodoSubmissionLog, validateTodo } = require("./todo");
+const {
+  formatTodoSubmissionLog,
+  validateTodo,
+  validateTodoDone,
+} = require("./todo");
 
 const requireEnv = (name) => {
   const value = process.env[name];
@@ -84,7 +88,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/todos") {
     try {
       const result = await database.query(
-        "SELECT id, content FROM todos ORDER BY id",
+        "SELECT id, content, done FROM todos ORDER BY id",
       );
       sendJson(res, 200, result.rows);
     } catch (error) {
@@ -125,7 +129,7 @@ const server = http.createServer(async (req, res) => {
     const { content } = validation;
     try {
       const result = await database.query(
-        "INSERT INTO todos (content) VALUES ($1) RETURNING id, content",
+        "INSERT INTO todos (content) VALUES ($1) RETURNING id, content, done",
         [content],
       );
       logTodoSubmission("info", {
@@ -152,6 +156,39 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  const updateMatch = req.method === "PUT" && req.url.match(/^\/todos\/(\d+)$/);
+  if (updateMatch) {
+    let body;
+    try {
+      body = JSON.parse(await readBody(req));
+    } catch {
+      sendText(res, 400, "Invalid JSON");
+      return;
+    }
+
+    const validation = validateTodoDone(body?.done);
+    if (!validation.valid) {
+      sendText(res, 400, "Todo done field must be a boolean");
+      return;
+    }
+
+    try {
+      const result = await database.query(
+        "UPDATE todos SET done = $1 WHERE id = $2 RETURNING id, content, done",
+        [validation.done, Number(updateMatch[1])],
+      );
+      if (result.rowCount === 0) {
+        sendText(res, 404, "Todo not found");
+        return;
+      }
+      sendJson(res, 200, result.rows[0]);
+    } catch (error) {
+      console.error("Could not update Todo", error);
+      sendText(res, 503, "Database unavailable");
+    }
+    return;
+  }
+
   sendText(res, 404, "Not found");
 });
 
@@ -166,9 +203,13 @@ const initializeDatabase = async () => {
         CREATE TABLE IF NOT EXISTS todos (
           id BIGSERIAL PRIMARY KEY,
           content VARCHAR(${maxTodoLength}) NOT NULL CHECK (char_length(content) > 0),
+          done BOOLEAN NOT NULL DEFAULT FALSE,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `);
+      await database.query(
+        "ALTER TABLE todos ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT FALSE",
+      );
       await database.query(`
         INSERT INTO todos (content)
         SELECT content
