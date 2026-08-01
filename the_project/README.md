@@ -1,4 +1,4 @@
-# Exercise 3.11 - The Project, Step 19
+# Exercise 3.12 - The Project, Step 20
 
 The Todo application is automatically built, published, and deployed to a
 separate Google Kubernetes Engine namespace for each branch.
@@ -182,3 +182,19 @@ The initial values were chosen after checking the running Pods with
 CPU and 28--44Mi memory, so the requests cover normal usage while the limits
 allow the database and batch jobs to handle brief spikes. They should be
 revisited after observing the application under realistic traffic.
+
+## GKE application logs
+
+GKE Monitoring was enabled for the cluster by the platform. To find the
+project's application logs, open Google Cloud Console → **Kubernetes Engine**
+→ **Workloads** → `todo-backend` → **Logs**, or use `kubectl logs` directly:
+
+```bash
+kubectl logs deployment/todo-backend -n project --since=10m
+```
+
+I created a Todo through the project's Ingress and found the corresponding
+structured log entry in the backend container. It records the accepted Todo,
+its ID, and HTTP status `201`:
+
+![GKE backend log showing a newly created Todo](./gke-todo-log.svg)
