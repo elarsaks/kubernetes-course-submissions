@@ -15,6 +15,11 @@ const validateTodo = (value, maxLength) => {
   return { valid: true, content, length };
 };
 
+const validateTodoDone = (value) => ({
+  valid: typeof value === "boolean",
+  done: value,
+});
+
 const formatTodoSubmissionLog = (level, details) => JSON.stringify({
   timestamp: new Date().toISOString(),
   level,
@@ -22,4 +27,4 @@ const formatTodoSubmissionLog = (level, details) => JSON.stringify({
   ...details,
 });
 
-module.exports = { formatTodoSubmissionLog, validateTodo };
+module.exports = { formatTodoSubmissionLog, validateTodo, validateTodoDone };

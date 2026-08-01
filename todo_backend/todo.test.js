@@ -1,6 +1,10 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { formatTodoSubmissionLog, validateTodo } = require("./todo");
+const {
+  formatTodoSubmissionLog,
+  validateTodo,
+  validateTodoDone,
+} = require("./todo");
 
 test("accepts a Todo at the 140-character limit", () => {
   const result = validateTodo("x".repeat(140), 140);
@@ -71,4 +75,14 @@ test("formats submission logs as parseable single-line JSON", () => {
   assert.equal(parsed.outcome, "rejected");
   assert.equal(parsed.content, "first line\nsecond line");
   assert.match(parsed.timestamp, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("accepts boolean Todo completion values", () => {
+  assert.deepEqual(validateTodoDone(true), { valid: true, done: true });
+  assert.deepEqual(validateTodoDone(false), { valid: true, done: false });
+});
+
+test("rejects non-boolean Todo completion values", () => {
+  assert.deepEqual(validateTodoDone("true"), { valid: false, done: "true" });
+  assert.deepEqual(validateTodoDone(undefined), { valid: false, done: undefined });
 });
