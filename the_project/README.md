@@ -1,108 +1,81 @@
-# Exercise 3.5 - The Project, Step 14
+# Exercise 3.6 - The Project, Step 15
 
-## Kustomize and GKE deployment
+The Todo application is automatically built, published, and deployed to
+Google Kubernetes Engine on every push.
 
-The complete project is deployed from the repository root using Kustomize.
-The `the_project/` Kustomization defines the frontend, while the root
-Kustomization adds PostgreSQL, the Todo backend, and the scheduled Todo
-generator.
+## Application
 
-Configure `kubectl` for the GKE cluster, then render and apply the complete
-project configuration:
+The root Kustomization deploys the complete project into the `project`
+namespace:
+
+- Todo frontend
+- Todo backend
+- PostgreSQL
+- Hourly Wikipedia Todo generator
+- Persistent image and database storage
+- Service and Ingress resources
+
+The persistent volume claims use GKE's `standard-rwo` storage class. The
+frontend Deployment uses the `Recreate` strategy so two Pods do not compete
+for its `ReadWriteOnce` image-cache volume during an update.
+
+## Deployment pipeline
+
+The GitHub Actions workflow in `.github/workflows/main.yaml`:
+
+1. Authenticates to Google Cloud through Workload Identity Federation.
+2. Builds the frontend, backend, and generator images.
+3. Pushes commit-tagged images to the `kubernetes-course` Artifact Registry
+   repository.
+4. Replaces the Kustomize image mappings with the published image names.
+5. Applies the complete project to `dwk-cluster`.
+6. Waits for PostgreSQL, backend, and frontend rollouts to complete.
+
+Image tags contain the branch name and commit SHA, making every deployment
+traceable to its source commit.
+
+The workflow uses the GitHub environment `GKE_PROJECT` with these environment
+secrets:
+
+- `GKE_PROJECT`
+- `SERVICE_ACCOUNT`
+- `WORKLOAD_IDENTITY_PROVIDER`
+
+The CI service account can write to the course's Artifact Registry repository
+and deploy to the GKE cluster.
+
+## Manual deployment
+
+Configure `kubectl`, inspect the rendered resources, and apply them from the
+repository root:
 
 ```bash
-gcloud container clusters get-credentials dwk-cluster --zone=europe-north1-b
+gcloud container clusters get-credentials dwk-cluster \
+  --project=dwk-gke-503313 \
+  --zone=europe-north1-b
+
 kubectl kustomize .
 kubectl apply -k .
-kubectl rollout status deployment/the-project -n project
-kubectl get all -n project
 ```
 
-The image cache and PostgreSQL claims use GKE's `standard-rwo` storage class. The local-node
-PersistentVolume in `manifests/persistentvolume.yaml` is retained for the
-local k3d setup but is intentionally not included in the GKE Kustomizations.
-
-The image mapping is deliberately based on `PROJECT/IMAGE`; the deployment
-pipeline in exercise 3.6 can replace it with the commit-specific Artifact
-Registry image using `kustomize edit set image`.
-
----
-
-The Todo backend writes a structured JSON log for every Todo submission. Accepted, rejected, and database-failed submissions use the `todo_submission` event name and include the submitted content, character count, outcome, and HTTP status. Loki can therefore collect the container output and Grafana can show both successful Todos and messages rejected by backend validation.
-
-The backend independently enforces the configured `MAX_TODO_LENGTH` of 140 characters. The HTML input limit remains a convenience for browser users, but API clients cannot bypass the backend limit. PostgreSQL also retains its `VARCHAR(140)` constraint.
-
-## Build and deploy
-
-Starting from a running exercise 2.9 deployment, build and publish the updated backend:
+Verify the deployment:
 
 ```bash
-docker build -t elarsaks/todo-backend:2.10.0 ./todo_backend
-docker push elarsaks/todo-backend:2.10.0
-
-kubectl apply -f the_project/manifests/configmap.yaml
-kubectl apply -f todo_backend/manifests/deployment.yaml
-kubectl rollout status deployment/todo-backend -n project
+kubectl rollout status statefulset/todo-postgres -n project --timeout=10m
+kubectl rollout status deployment/todo-backend -n project --timeout=10m
+kubectl rollout status deployment/the-project -n project --timeout=10m
+kubectl get pods,pvc,svc,ingress -n project
 ```
 
-For k3d development, import the image instead of pushing it:
+When the Ingress has an external address, test the application:
 
 ```bash
-k3d image import elarsaks/todo-backend:2.10.0 -c k3s-default
+PROJECT_IP="$(kubectl get ingress the-project \
+  -n project \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+
+curl -i "http://${PROJECT_IP}/"
 ```
 
-## Verify request logging and validation
-
-Forward the backend service to a separate local port:
-
-```bash
-kubectl port-forward -n project svc/todo-backend 3001:3000
-```
-
-In another terminal, submit an allowed Todo and then a 141-character Todo:
-
-```bash
-curl -i http://localhost:3001/todos \
-  -H 'Content-Type: application/json' \
-  --data '{"content":"Observe this Todo"}'
-
-node -e 'process.stdout.write(JSON.stringify({content: "x".repeat(141)}))' | \
-  curl -i http://localhost:3001/todos \
-    -H 'Content-Type: application/json' \
-    --data-binary @-
-```
-
-The first request returns `201 Created`. The oversized request returns `400 Bad Request` with:
-
-```text
-Todo must contain 1–140 characters
-```
-
-The same events are visible directly in the Pod logs:
-
-```bash
-kubectl logs -n project deployment/todo-backend --tail=20
-```
-
-After installing the course monitoring stack and opening Grafana's Loki datasource, show every backend Todo submission with:
-
-```logql
-{namespace="project"} |= "todo_submission"
-```
-
-Show only rejected submissions with:
-
-```logql
-{namespace="project"} |= "todo_submission" |= "rejected"
-```
-
-The rejected JSON log includes `"reason":"too_long"`, the attempted `content`, `"length":141`, `"maxLength":140`, and `"status":400`.
-
-## Run backend tests
-
-```bash
-cd todo_backend
-npm test
-```
-
-The tests cover the 140/141-character boundary, trimming, Unicode character counting, and single-line JSON log formatting.
+A successful deployment returns `HTTP/1.1 200 OK` and the Todo application
+HTML.

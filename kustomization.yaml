@@ -1,8 +1,24 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+namespace: project
+
 resources:
-  - the_project
+  - the_project/manifests/namespace.yaml
+  - the_project/manifests/configmap.yaml
+  - the_project/manifests/deployment.yaml
+  - the_project/manifests/persistentvolumeclaim.yaml
   - todo_backend/manifests/postgres.yaml
   - todo_backend/manifests/deployment.yaml
   - todo_generator/manifests/cronjob.yaml
+
+images:
+  - name: PROJECT/IMAGE
+    newName: elarsaks/the-project
+    newTag: 3.5.0
+  - name: elarsaks/todo-backend
+    newName: elarsaks/todo-backend
+    newTag: 2.10.0
+  - name: elarsaks/todo-generator
+    newName: elarsaks/todo-generator
+    newTag: 2.9.0

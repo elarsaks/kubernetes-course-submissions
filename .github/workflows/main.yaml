@@ -1,0 +1,82 @@
+name: Release application
+
+on:
+  push:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: europe-north1-b
+  REGISTRY: europe-north1-docker.pkg.dev
+  REPOSITORY: kubernetes-course
+
+jobs:
+  build-publish-deploy:
+    name: Build, Publish and Deploy
+    runs-on: ubuntu-latest
+    environment: GKE_PROJECT
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud --quiet auth configure-docker "$REGISTRY"
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          project_id: ${{ env.PROJECT_ID }}
+          location: ${{ env.GKE_ZONE }}
+
+      - name: Form image names
+        run: |
+          safe_branch="$(printf '%s' "$GITHUB_REF_NAME" | tr '/_' '--' | tr -cd '[:alnum:].-' | cut -c1-80)"
+          image_tag="${safe_branch}-${GITHUB_SHA}"
+          image_prefix="$REGISTRY/$PROJECT_ID/$REPOSITORY"
+          {
+            echo "IMAGE_TAG=$image_tag"
+            echo "FRONTEND_IMAGE=$image_prefix/the-project:$image_tag"
+            echo "BACKEND_IMAGE=$image_prefix/todo-backend:$image_tag"
+            echo "GENERATOR_IMAGE=$image_prefix/todo-generator:$image_tag"
+          } >> "$GITHUB_ENV"
+
+      - name: Build images
+        run: |
+          docker build --tag "$FRONTEND_IMAGE" ./the_project
+          docker build --tag "$BACKEND_IMAGE" ./todo_backend
+          docker build --tag "$GENERATOR_IMAGE" ./todo_generator
+
+      - name: Publish images
+        run: |
+          docker push "$FRONTEND_IMAGE"
+          docker push "$BACKEND_IMAGE"
+          docker push "$GENERATOR_IMAGE"
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v3
+
+      - name: Deploy
+        run: |
+          kustomize edit set image PROJECT/IMAGE="$FRONTEND_IMAGE"
+          kustomize edit set image elarsaks/todo-backend="$BACKEND_IMAGE"
+          kustomize edit set image elarsaks/todo-generator="$GENERATOR_IMAGE"
+          kustomize build . | kubectl apply -f -
+          kubectl rollout status statefulset/todo-postgres --namespace=project --timeout=10m
+          kubectl rollout status deployment/todo-backend --namespace=project --timeout=10m
+          kubectl rollout status deployment/the-project --namespace=project --timeout=10m
+          kubectl get services --namespace=project -o wide
