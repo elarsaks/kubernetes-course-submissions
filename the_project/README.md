@@ -1,4 +1,39 @@
-# Exercise 3.12 - The Project, Step 20
+# Exercise 4.2 - The Project, Step 21
+
+The frontend now exposes Kubernetes health endpoints and has both probes in
+its Deployment:
+
+- `/readyz` verifies that the Todo backend can be reached, which means the
+  application can use its PostgreSQL database through the backend.
+- `/healthz` reports whether the frontend process is healthy.
+
+The **break the app** button sends `POST /break`. This intentionally makes the
+health and readiness endpoints fail and makes normal frontend requests return
+HTTP 503. Kubernetes removes the Pod from the Service through the failed
+readiness probe and restarts it through the failed liveness probe. The new Pod
+starts with a healthy state again.
+
+## Local verification
+
+Apply the project to a local k3d cluster and wait for the frontend rollout:
+
+```bash
+kubectl apply -k .
+kubectl rollout status deployment/the-project -n project --timeout=10m
+```
+
+Confirm both probes succeed:
+
+```bash
+kubectl exec deployment/the-project -n project -- \
+  node -e 'Promise.all([fetch("http://localhost:3000/healthz"), fetch("http://localhost:3000/readyz")]).then(async ([health, ready]) => console.log(health.status, ready.status))'
+```
+
+The command prints `200 200`. Open the frontend through its local Service or
+Ingress and press **break the app**. The Pod's restart count should increase,
+and after the restart the Pod should return to `1/1` with both probes passing.
+
+## Exercise 3.12 - The Project, Step 20
 
 The Todo application is automatically built, published, and deployed to a
 separate Google Kubernetes Engine namespace for each branch.
