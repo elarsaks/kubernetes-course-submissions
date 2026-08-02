@@ -68,6 +68,7 @@ test("six broadcaster replicas deliver each NATS event at most once", async (t) 
         PORT: String(await getFreePort()),
         NATS_URL: nats.url,
         NATS_SUBJECT: subject,
+        BROADCAST_MODE: "forward",
         BROADCAST_URL: `http://127.0.0.1:${receiverPort}/broadcast`,
       },
       stdio: ["ignore", "pipe", "pipe"],

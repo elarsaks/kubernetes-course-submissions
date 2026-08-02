@@ -1,3 +1,19 @@
+# Exercise 4.9 - The Project, Step 25
+
+The Todo project has staging and production Kustomize overlays in separate
+namespaces. Commits to the default branch update staging, while Git tags update
+production. Staging logs broadcaster messages and excludes database backups;
+production forwards messages and retains the backup CronJob.
+
+Secrets are applied outside ArgoCD.
+
+```bash
+kubectl apply -f argocd/project-staging-application.yaml
+kubectl apply -f argocd/project-production-application.yaml
+```
+
+---
+
 # Exercise 4.8 - The Project, Step 24
 
 The complete Todo project now uses GitOps. ArgoCD watches the repository root

@@ -10,7 +10,8 @@ const requireEnv = (name) => {
 const port = Number(requireEnv("PORT"));
 const natsUrl = requireEnv("NATS_URL");
 const natsSubject = requireEnv("NATS_SUBJECT");
-const broadcastUrl = requireEnv("BROADCAST_URL");
+const broadcastMode = process.env.BROADCAST_MODE || "forward";
+const broadcastUrl = broadcastMode === "forward" ? requireEnv("BROADCAST_URL") : null;
 const stringCodec = StringCodec();
 
 if (!Number.isInteger(port) || port <= 0) {
@@ -29,6 +30,15 @@ const server = http.createServer((req, res) => {
 
 const sendToGenericService = async ({ action, todo }) => {
   const message = action === "created" ? "A todo was created" : "A todo was updated";
+  if (broadcastMode === "log") {
+    console.log(`Received ${action} Todo ${todo.id}: ${message}`);
+    return;
+  }
+
+  if (broadcastMode !== "forward") {
+    throw new Error(`Unsupported BROADCAST_MODE: ${broadcastMode}`);
+  }
+
   const response = await fetch(broadcastUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
