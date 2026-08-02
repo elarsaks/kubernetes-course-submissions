@@ -4,21 +4,24 @@ kind: Kustomization
 namespace: project-staging
 
 resources:
-  - namespace.yaml
-  - ../../base
+- namespace.yaml
+- ../../base
 
 patches:
-  - path: broadcaster-config.yaml
-  - path: broadcaster-log-only.yaml
-  - path: remove-backup-cronjob.yaml
+- path: broadcaster-config.yaml
+- path: broadcaster-log-only.yaml
+- path: remove-backup-cronjob.yaml
 
 images:
-  - name: PROJECT/IMAGE
-    newName: elarsaks/the-project
-    newTag: base
-  - name: elarsaks/todo-backend
-    newTag: base
-  - name: elarsaks/todo-generator
-    newTag: base
-  - name: elarsaks/todo-broadcaster
-    newTag: base
+- name: PROJECT/IMAGE
+  newName: elarsaks/the-project
+  newTag: b097eb12827faabb3239dfdcffb984bb3c248cb7
+- name: elarsaks/todo-backend
+  newName: elarsaks/todo-backend
+  newTag: b097eb12827faabb3239dfdcffb984bb3c248cb7
+- name: elarsaks/todo-broadcaster
+  newName: elarsaks/todo-broadcaster
+  newTag: b097eb12827faabb3239dfdcffb984bb3c248cb7
+- name: elarsaks/todo-generator
+  newName: elarsaks/todo-generator
+  newTag: b097eb12827faabb3239dfdcffb984bb3c248cb7
