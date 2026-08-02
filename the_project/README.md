@@ -1,4 +1,102 @@
-# Exercise 4.5 - The Project, Step 22
+# Exercise 4.6 - The Project, Step 23
+
+The project now publishes Todo status events to NATS whenever a Todo is
+created or updated. A separate six-replica broadcaster consumes those events
+through the `broadcasters` queue group, so each event is handled by only one
+broadcaster Pod.
+
+The broadcaster uses the exercise's **Generic** external service option. It
+sends a POST request to the URL in `BROADCAST_URL` with JSON like:
+
+```json
+{
+  "user": "bot",
+  "message": "A todo was created",
+  "todo": {
+    "id": 1,
+    "content": "Learn Kubernetes",
+    "done": false
+  }
+}
+```
+
+## Deploy NATS and the Generic broadcaster
+
+Install NATS before applying the project:
+
+```bash
+helm repo add nats https://nats-io.github.io/k8s/helm/charts/
+helm repo update
+helm upgrade --install my-nats nats/nats --namespace nats --create-namespace
+```
+
+Create the Generic webhook Secret in the project namespace. Replace the URL
+with the endpoint of the service receiving the notifications:
+
+```bash
+kubectl create namespace project --dry-run=client --output=yaml | kubectl apply -f -
+kubectl create secret generic broadcaster-secret \
+  --namespace project \
+  --from-literal=BROADCAST_URL=https://example.invalid/todos
+kubectl apply -k .
+```
+
+Verify the required six replicas and test the queue-based scaling:
+
+```bash
+kubectl scale deployment/todo-broadcaster --replicas=6 -n project
+kubectl rollout status deployment/todo-broadcaster -n project --timeout=10m
+kubectl get pods -l app=todo-broadcaster -n project
+```
+
+Create or update a Todo and inspect the broadcaster logs. Only one replica
+should log each delivered NATS event:
+
+```bash
+kubectl logs -l app=todo-broadcaster -n project --prefix
+
+curl -X POST http://localhost:3000/todos \
+  -H 'Content-Type: application/json' \
+  -d '{"content":"Send a status update"}'
+```
+
+The backend and broadcaster use `NATS_URL` and `NATS_SUBJECT` from the shared
+project ConfigMap. The event subject is `todos.status`.
+
+The broadcaster's queue behavior can also be tested automatically without a
+Kubernetes cluster. The test starts a temporary NATS container, six
+broadcaster processes, and a local Generic webhook receiver, then publishes
+100 events and asserts that every event is delivered exactly once:
+
+```bash
+cd broadcaster
+npm ci
+npm run test:integration
+```
+
+This verifies the no-duplicates property. The exercise allows missing
+messages when a service is unhealthy; the broadcaster logs webhook failures
+and does not retry them.
+
+For the same test inside a local Kubernetes cluster, deploy the included test
+receiver and point the broadcaster Secret to its Service:
+
+```bash
+kubectl apply -f broadcaster/manifests/test-receiver.yaml
+kubectl create secret generic broadcaster-secret \
+  --namespace project \
+  --from-literal=BROADCAST_URL=http://webhook-test-receiver:8080
+kubectl apply -k .
+kubectl rollout status deployment/todo-broadcaster -n project
+```
+
+After creating test Todos, inspect the received payloads with:
+
+```bash
+kubectl logs deployment/webhook-test-receiver -n project | grep '^WEBHOOK '
+```
+
+---
 
 The Todo application now supports completing a Todo through
 `PUT /todos/<id>`. The backend persists a `done` boolean with a default of
@@ -73,12 +171,13 @@ by the workflow:
 
 - Todo frontend
 - Todo backend
+- Six-replica Generic Todo broadcaster
 - PostgreSQL
 - Hourly Wikipedia Todo generator
 - Persistent image and database storage
 - Service and Ingress resources
 
-The persistent volume claims use GKE's `standard-rwo` storage class. The
+The persistent volume claims use k3d's `local-path` storage class. The
 frontend Deployment uses the `Recreate` strategy so two Pods do not compete
 for its `ReadWriteOnce` image-cache volume during an update.
 
@@ -87,13 +186,13 @@ for its `ReadWriteOnce` image-cache volume during an update.
 The GitHub Actions workflow in `.github/workflows/main.yaml`:
 
 1. Authenticates to Google Cloud through Workload Identity Federation.
-2. Builds the frontend, backend, and generator images.
+2. Builds the frontend, backend, generator, and broadcaster images.
 3. Pushes commit-tagged images to the `kubernetes-course` Artifact Registry
    repository.
 4. Replaces the Kustomize image mappings with the published image names.
 5. Creates a namespace for the branch and sets it as the Kustomize namespace.
 6. Applies the complete project to `dwk-cluster`.
-7. Waits for PostgreSQL, backend, and frontend rollouts to complete.
+7. Waits for PostgreSQL, backend, frontend, and broadcaster rollouts to complete.
 
 Image tags contain the branch name and commit SHA, making every deployment
 traceable to its source commit.

@@ -80,7 +80,7 @@ spec:
       spec:
         accessModes:
           - ReadWriteOnce
-        storageClassName: standard-rwo
+        storageClassName: local-path
         resources:
           requests:
             storage: 100Mi
