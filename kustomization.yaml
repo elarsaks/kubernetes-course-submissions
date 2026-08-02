@@ -11,11 +11,12 @@ resources:
   - todo_backend/manifests/backup-cronjob.yaml
   - todo_backend/manifests/deployment.yaml
   - todo_generator/manifests/cronjob.yaml
+  - broadcaster/manifests/deployment.yaml
 
 images:
   - name: PROJECT/IMAGE
     newName: elarsaks/the-project
-    newTag: 3.5.0
+    newTag: 4.6.0
   - name: elarsaks/todo-backend
     newName: elarsaks/todo-backend
     newTag: 2.10.0
@@ -25,3 +26,6 @@ images:
   - name: elarsaks/todo-postgres-backup
     newName: elarsaks/todo-postgres-backup
     newTag: 1.0.0
+  - name: elarsaks/todo-broadcaster
+    newName: elarsaks/todo-broadcaster
+    newTag: 4.6.0

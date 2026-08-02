@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-broadcaster
+  namespace: project
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: todo-broadcaster
+  template:
+    metadata:
+      labels:
+        app: todo-broadcaster
+    spec:
+      containers:
+        - name: todo-broadcaster
+          image: elarsaks/todo-broadcaster:4.6.0
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: project-config
+          env:
+            - name: PORT
+              value: "3001"
+            - name: BROADCAST_URL
+              valueFrom:
+                secretKeyRef:
+                  name: broadcaster-secret
+                  key: BROADCAST_URL
+          ports:
+            - containerPort: 3001
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3001
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10

@@ -8,6 +8,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "nats": "^2.29.1",
     "pg": "^8.13.1"
   },
   "license": "MIT"

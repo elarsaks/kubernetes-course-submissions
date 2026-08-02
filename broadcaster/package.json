@@ -1,0 +1,14 @@
+{
+  "name": "todo-broadcaster",
+  "version": "4.6.0",
+  "description": "NATS Todo status broadcaster for DevOps with Kubernetes exercise 4.6",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test:integration": "node --test integration.test.js"
+  },
+  "dependencies": {
+    "nats": "^2.29.1"
+  },
+  "license": "MIT"
+}

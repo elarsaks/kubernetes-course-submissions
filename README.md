@@ -45,6 +45,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [4.3. Prometheus](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.3/exercises)
 - [4.4. Your canary](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.4/ping_pong)
 - [4.5. The Project, Step 22](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.5/the_project)
+- [4.6. The Project, Step 23](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.6/the_project)
 
 ---
 

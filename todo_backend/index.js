@@ -1,4 +1,5 @@
 const http = require("node:http");
+const { connect, StringCodec } = require("nats");
 const { Pool } = require("pg");
 const {
   formatTodoSubmissionLog,
@@ -22,6 +23,10 @@ const requirePositiveInteger = (name) => {
 
 const port = requirePositiveInteger("PORT");
 const maxTodoLength = requirePositiveInteger("MAX_TODO_LENGTH");
+const natsUrl = requireEnv("NATS_URL");
+const natsSubject = requireEnv("NATS_SUBJECT");
+const stringCodec = StringCodec();
+let natsConnection;
 const database = new Pool({
   host: requireEnv("POSTGRES_HOST"),
   port: requirePositiveInteger("POSTGRES_PORT"),
@@ -66,6 +71,34 @@ const logTodoSubmission = (level, details) => {
   } else {
     console.log(message);
   }
+};
+
+const connectToNats = async () => {
+  while (!natsConnection) {
+    try {
+      natsConnection = await connect({ servers: natsUrl });
+      console.log(`Connected to NATS at ${natsUrl}`);
+      natsConnection.closed().then((error) => {
+        if (error) console.error("NATS connection closed", error);
+        natsConnection = undefined;
+      });
+    } catch (error) {
+      console.error("NATS is not ready; retrying in two seconds", error);
+      await wait(2000);
+    }
+  }
+};
+
+const publishTodoStatus = (action, todo) => {
+  if (!natsConnection) {
+    console.warn("Todo status was not published because NATS is unavailable");
+    return;
+  }
+
+  natsConnection.publish(natsSubject, stringCodec.encode(JSON.stringify({
+    action,
+    todo,
+  })));
 };
 
 const server = http.createServer(async (req, res) => {
@@ -140,6 +173,7 @@ const server = http.createServer(async (req, res) => {
         maxLength: maxTodoLength,
         status: 201,
       });
+      publishTodoStatus("created", result.rows[0]);
       sendJson(res, 201, result.rows[0]);
     } catch (error) {
       console.error("Could not save Todo", error);
@@ -181,6 +215,7 @@ const server = http.createServer(async (req, res) => {
         sendText(res, 404, "Todo not found");
         return;
       }
+      publishTodoStatus("updated", result.rows[0]);
       sendJson(res, 200, result.rows[0]);
     } catch (error) {
       console.error("Could not update Todo", error);
@@ -234,6 +269,7 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 initializeDatabase().then(() => {
+  connectToNats();
   server.listen(port, () => {
     console.log(`Todo backend started in port ${port}`);
   });

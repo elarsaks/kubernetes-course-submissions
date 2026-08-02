@@ -15,3 +15,5 @@ data:
   CACHE_DURATION_MS: "600000"
   MAX_IMAGE_REDIRECTS: "5"
   MAX_TODO_LENGTH: "140"
+  NATS_URL: nats://my-nats.nats.svc.cluster.local:4222
+  NATS_SUBJECT: todos.status
