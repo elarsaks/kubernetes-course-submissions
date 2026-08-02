@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: project-config
-data:
-  BROADCAST_MODE: forward
-  NATS_SUBJECT: todos.status.production
