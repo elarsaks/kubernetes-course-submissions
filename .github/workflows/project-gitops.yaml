@@ -78,7 +78,7 @@ jobs:
         env:
           TAG: ${{ env.IMAGE_TAG }}
         run: |
-          kustomize edit set image PROJECT/IMAGE="$IMAGE_PREFIX/the-project:$TAG"
+          kustomize edit set image elarsaks/the-project="$IMAGE_PREFIX/the-project:$TAG"
           kustomize edit set image elarsaks/todo-backend="$IMAGE_PREFIX/todo-backend:$TAG"
           kustomize edit set image elarsaks/todo-generator="$IMAGE_PREFIX/todo-generator:$TAG"
           kustomize edit set image elarsaks/todo-broadcaster="$IMAGE_PREFIX/todo-broadcaster:$TAG"
