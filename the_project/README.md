@@ -1,3 +1,68 @@
+# Exercise 4.8 - The Project, Step 24
+
+The complete Todo project now uses GitOps. ArgoCD watches the repository root
+on the `master` branch and automatically applies the root `kustomization.yaml`
+to the local Kubernetes cluster.
+
+When project code or manifests change, GitHub Actions builds and publishes the
+frontend, backend, generator, backup, and broadcaster images. It then commits
+the new commit SHA image tags to the root Kustomization. ArgoCD detects that
+Git change and synchronizes the project.
+
+## Local ArgoCD deployment
+
+Install NATS and create the Generic broadcaster Secret before syncing the
+project:
+
+```bash
+helm repo add nats https://nats-io.github.io/k8s/helm/charts/
+helm repo update
+helm upgrade --install my-nats nats/nats \
+  --namespace nats \
+  --create-namespace
+
+kubectl create namespace project --dry-run=client --output=yaml | kubectl apply -f -
+kubectl apply -f broadcaster/manifests/test-receiver.yaml
+kubectl create secret generic broadcaster-secret \
+  --namespace project \
+  --from-literal=BROADCAST_URL=http://webhook-test-receiver:8080
+```
+
+Apply the ArgoCD Application:
+
+```bash
+kubectl apply -f argocd/the-project-application.yaml
+kubectl get application the-project -n argocd
+```
+
+The Application uses automated sync, pruning, and self-healing. The
+`broadcaster-secret`, NATS installation, and runtime configuration are
+intentionally kept outside Git.
+
+## GitHub Actions configuration
+
+The `project-gitops.yaml` workflow uses the repository secrets
+`DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`. It publishes all project images
+with the commit SHA as the tag and updates the root `kustomization.yaml`.
+
+The `[skip ci]` marker on the generated commit prevents an image-build loop.
+
+## Verify
+
+```bash
+kubectl get application the-project -n argocd
+kubectl get pods -n project
+kubectl rollout status deployment/the-project -n project --timeout=10m
+kubectl rollout status deployment/todo-backend -n project --timeout=10m
+kubectl rollout status deployment/todo-broadcaster -n project --timeout=10m
+```
+
+The local manifests use k3d's `local-path` storage class. The application
+must be running in the `project` namespace, and NATS must be available at the
+service address configured in `the_project/manifests/configmap.yaml`.
+
+---
+
 # Exercise 4.6 - The Project, Step 23
 
 The project now publishes Todo status events to NATS whenever a Todo is
