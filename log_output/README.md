@@ -1,4 +1,68 @@
-# Exercise 4.1 - Readiness Probe
+# Exercise 4.7 - Baby steps to GitOps
+
+The Log Output application is deployed through ArgoCD. ArgoCD watches the
+`log_output` directory on the `master` branch and automatically applies the
+Kustomize state to the local Kubernetes cluster.
+
+GitHub Actions builds and publishes a new image whenever Log Output changes,
+then commits the new image tag to `log_output/kustomization.yaml`. ArgoCD
+detects that Git change and synchronizes the application.
+
+## Local ArgoCD setup
+
+Install ArgoCD in the local k3d cluster:
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl rollout status deployment/argocd-server -n argocd --timeout=10m
+```
+
+Expose the ArgoCD API locally:
+
+```bash
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+
+Apply the repository's ArgoCD Application definition:
+
+```bash
+kubectl apply -f argocd/log-output-application.yaml
+```
+
+The repository is public, so ArgoCD can read it without repository
+credentials. The Application uses automated sync, pruning, and self-healing.
+Ping-pong must be running in the `exercises` namespace because Log Output
+uses it for its readiness check.
+
+## GitHub Actions configuration
+
+Add these repository secrets before pushing Log Output changes:
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+
+The workflow publishes `elarsaks/log-output:<commit-sha>` and commits the new
+tag to `log_output/kustomization.yaml`. The `[skip ci]` commit marker prevents
+the release commit from starting another image build.
+
+## Verify GitOps
+
+After the workflow commits a new image tag, inspect ArgoCD synchronization:
+
+```bash
+kubectl get application log-output -n argocd
+kubectl get pods -n exercises
+kubectl describe application log-output -n argocd
+```
+
+Changing the image tag or another manifest in Git should cause ArgoCD to
+update the local deployment automatically.
+
+---
+
+## Exercise 4.1 - Readiness Probe
 
 The Log Output deployment uses a readiness probe on `/status`. The endpoint
 checks that the log files are available and successfully receives a response
