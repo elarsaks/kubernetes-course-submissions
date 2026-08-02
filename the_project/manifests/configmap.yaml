@@ -4,7 +4,6 @@ metadata:
   name: project-config
 data:
   NODE_ENV: production
-  BROADCAST_MODE: forward
   PORT: "3000"
   IMAGE_PATH: /usr/src/app/files/image.jpg
   IMAGE_URL: https://picsum.photos/1200

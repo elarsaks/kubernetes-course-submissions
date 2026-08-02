@@ -20,6 +20,7 @@ env:
   IMAGE_PREFIX: elarsaks
   DEPLOY_ENV: ${{ startsWith(github.ref, 'refs/tags/') && 'production' || 'staging' }}
   IMAGE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || github.sha }}
+  BASE_BRANCH: ${{ startsWith(github.ref, 'refs/heads/') && github.ref_name || github.event.repository.default_branch }}
 
 jobs:
   build-publish-update:
@@ -69,11 +70,11 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
-          base: master
-          branch: automation/project-${{ env.DEPLOY_ENV }}-${{ github.sha }}
+          base: ${{ env.BASE_BRANCH }}
+          branch: automation/project-${{ env.DEPLOY_ENV }}
           delete-branch: true
           commit-message: Update ${{ env.DEPLOY_ENV }} project images ${{ env.IMAGE_TAG }} [skip ci]
-          title: Update ${{ env.DEPLOY_ENV }} project images ${{ env.IMAGE_TAG }}
+          title: Update ${{ env.DEPLOY_ENV }} project images ${{ env.IMAGE_TAG }} [skip ci]
           body: |
             Automated GitOps image update for the `${{ env.DEPLOY_ENV }}` environment.
 

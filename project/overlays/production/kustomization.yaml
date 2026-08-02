@@ -8,6 +8,7 @@ resources:
   - ../../base
 
 patches:
+  - path: broadcaster-config.yaml
   - path: broadcaster-generic.yaml
 
 images:

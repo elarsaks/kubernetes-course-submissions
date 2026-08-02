@@ -3,5 +3,5 @@ kind: ConfigMap
 metadata:
   name: project-config
 data:
-  BROADCAST_MODE: log
-  NATS_SUBJECT: todos.status.staging
+  BROADCAST_MODE: forward
+  NATS_SUBJECT: todos.status.production
