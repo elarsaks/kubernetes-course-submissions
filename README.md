@@ -49,6 +49,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [4.7. Baby steps to GitOps](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.7/log_output)
 - [4.8. The Project, Step 24](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.8)
 - [4.9. The Project, Step 25: Staging and Production GitOps Environments](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.9)
+- [4.10. The Project, Step 26: Separate Code and Configuration Repositories](https://github.com/elarsaks/kubernetes-course-project-config)
 
 ---
 

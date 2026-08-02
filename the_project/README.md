@@ -1,3 +1,39 @@
+# Exercise 4.10 - The Project, Step 26
+
+The Todo project's source code and container image workflows remain in this
+repository. Its Kustomize base, staging and production overlays, and ArgoCD
+Applications are maintained in the separate public
+[`kubernetes-course-project-config`](https://github.com/elarsaks/kubernetes-course-project-config)
+repository.
+
+The code workflow publishes multi-architecture Docker Hub images and opens an
+automated pull request in the configuration repository. Commits to `master`
+or `main` use immutable commit-SHA image tags for staging; Git tags use the
+tag name for production. The configuration repository's protected default
+branch is changed only through those pull requests.
+
+Set the following code-repository secrets before enabling the workflow:
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+- `CONFIG_REPOSITORY_TOKEN`, a fine-grained token with Contents read/write and
+  Pull requests read/write access to the configuration repository
+
+Create the non-Git secrets in each runtime namespace separately. The
+production broadcaster Secret is referenced by the manifests but is never
+committed to either repository.
+
+Apply the ArgoCD Applications from the configuration repository:
+
+```bash
+kubectl apply -f argocd/project-staging-application.yaml
+kubectl apply -f argocd/project-production-application.yaml
+```
+
+The local k3d cluster and local ArgoCD are used; no GKE deployment is needed.
+
+---
+
 # Exercise 4.9 - The Project, Step 25
 
 The Todo project has staging and production Kustomize overlays in separate
@@ -6,6 +42,8 @@ production. Staging logs broadcaster messages and excludes database backups;
 production forwards messages and retains the backup CronJob.
 
 Secrets are applied outside ArgoCD.
+
+From the configuration repository root, apply the declarative Applications:
 
 ```bash
 kubectl apply -f argocd/project-staging-application.yaml
