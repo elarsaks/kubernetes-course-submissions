@@ -4,31 +4,30 @@ on:
   push:
     branches:
       - master
-    paths:
-      - kustomization.yaml
-      - the_project/**
-      - todo_backend/**
-      - todo_generator/**
-      - broadcaster/**
-      - .github/workflows/project-gitops.yaml
+      - main
+    tags:
+      - '**'
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
-  group: project-gitops-master
+  group: project-gitops-${{ github.ref }}
   cancel-in-progress: false
 
 env:
   IMAGE_PREFIX: elarsaks
+  DEPLOY_ENV: ${{ startsWith(github.ref, 'refs/tags/') && 'production' || 'staging' }}
+  IMAGE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || github.sha }}
 
 jobs:
-  build-publish-release:
-    name: Build, publish, and update GitOps state
+  build-publish-update:
+    name: Build, publish, and propose environment update
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout commit
         uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
@@ -41,44 +40,42 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and publish images
+        env:
+          TAG: ${{ env.IMAGE_TAG }}
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            --tag "$IMAGE_PREFIX/the-project:$GITHUB_SHA" \
-            --push ./the_project
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            --tag "$IMAGE_PREFIX/todo-backend:$GITHUB_SHA" \
-            --push ./todo_backend
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            --tag "$IMAGE_PREFIX/todo-generator:$GITHUB_SHA" \
-            --push ./todo_generator
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            --file ./todo_backend/Dockerfile.backup \
-            --tag "$IMAGE_PREFIX/todo-postgres-backup:$GITHUB_SHA" \
-            --push ./todo_backend
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            --tag "$IMAGE_PREFIX/todo-broadcaster:$GITHUB_SHA" \
-            --push ./broadcaster
+          docker buildx build --platform linux/amd64,linux/arm64 --tag "$IMAGE_PREFIX/the-project:$TAG" --push ./the_project
+          docker buildx build --platform linux/amd64,linux/arm64 --tag "$IMAGE_PREFIX/todo-backend:$TAG" --push ./todo_backend
+          docker buildx build --platform linux/amd64,linux/arm64 --tag "$IMAGE_PREFIX/todo-generator:$TAG" --push ./todo_generator
+          docker buildx build --platform linux/amd64,linux/arm64 --file ./todo_backend/Dockerfile.backup --tag "$IMAGE_PREFIX/todo-postgres-backup:$TAG" --push ./todo_backend
+          docker buildx build --platform linux/amd64,linux/arm64 --tag "$IMAGE_PREFIX/todo-broadcaster:$TAG" --push ./broadcaster
 
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v3
 
-      - name: Update image tags
+      - name: Update overlay image tags
+        working-directory: project/overlays/${{ env.DEPLOY_ENV }}
+        env:
+          TAG: ${{ env.IMAGE_TAG }}
         run: |
-          kustomize edit set image PROJECT/IMAGE="$IMAGE_PREFIX/the-project:$GITHUB_SHA"
-          kustomize edit set image elarsaks/todo-backend="$IMAGE_PREFIX/todo-backend:$GITHUB_SHA"
-          kustomize edit set image elarsaks/todo-generator="$IMAGE_PREFIX/todo-generator:$GITHUB_SHA"
-          kustomize edit set image elarsaks/todo-postgres-backup="$IMAGE_PREFIX/todo-postgres-backup:$GITHUB_SHA"
-          kustomize edit set image elarsaks/todo-broadcaster="$IMAGE_PREFIX/todo-broadcaster:$GITHUB_SHA"
-
-      - name: Commit GitOps state
-        run: |
-          if git diff --quiet -- kustomization.yaml; then
-            echo "Image tags are already current."
-            exit 0
+          kustomize edit set image PROJECT/IMAGE="$IMAGE_PREFIX/the-project:$TAG"
+          kustomize edit set image elarsaks/todo-backend="$IMAGE_PREFIX/todo-backend:$TAG"
+          kustomize edit set image elarsaks/todo-generator="$IMAGE_PREFIX/todo-generator:$TAG"
+          kustomize edit set image elarsaks/todo-broadcaster="$IMAGE_PREFIX/todo-broadcaster:$TAG"
+          if [ "$DEPLOY_ENV" = production ]; then
+            kustomize edit set image elarsaks/todo-postgres-backup="$IMAGE_PREFIX/todo-postgres-backup:$TAG"
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add kustomization.yaml
-          git commit -m "Release project images $GITHUB_SHA [skip ci]"
-          git push
+      - name: Create protected-branch-compatible GitOps PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          base: master
+          branch: automation/project-${{ env.DEPLOY_ENV }}-${{ github.sha }}
+          delete-branch: true
+          commit-message: Update ${{ env.DEPLOY_ENV }} project images ${{ env.IMAGE_TAG }} [skip ci]
+          title: Update ${{ env.DEPLOY_ENV }} project images ${{ env.IMAGE_TAG }}
+          body: |
+            Automated GitOps image update for the `${{ env.DEPLOY_ENV }}` environment.
+
+            Source ref: `${{ github.ref }}`
+            Image tag: `${{ env.IMAGE_TAG }}`

@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: the-project
+  name: project-staging
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,10 +10,10 @@ spec:
   source:
     repoURL: https://github.com/elarsaks/kubernetes-course-submissions.git
     targetRevision: master
-    path: .
+    path: project/overlays/staging
   destination:
     server: https://kubernetes.default.svc
-    namespace: project
+    namespace: project-staging
   syncPolicy:
     automated:
       prune: true

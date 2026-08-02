@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: project-staging
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+patches:
+  - path: broadcaster-config.yaml
+  - path: broadcaster-log-only.yaml
+  - path: remove-backup-cronjob.yaml
+
+images:
+  - name: PROJECT/IMAGE
+    newName: elarsaks/the-project
+    newTag: base
+  - name: elarsaks/todo-backend
+    newTag: base
+  - name: elarsaks/todo-generator
+    newTag: base
+  - name: elarsaks/todo-broadcaster
+    newTag: base

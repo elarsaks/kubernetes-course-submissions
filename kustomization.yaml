@@ -1,31 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: project
-
 resources:
-- the_project/manifests/configmap.yaml
-- the_project/manifests/deployment.yaml
-- the_project/manifests/persistentvolumeclaim.yaml
-- todo_backend/manifests/postgres.yaml
-- todo_backend/manifests/backup-cronjob.yaml
-- todo_backend/manifests/deployment.yaml
-- todo_generator/manifests/cronjob.yaml
-- broadcaster/manifests/deployment.yaml
-
-images:
-- name: PROJECT/IMAGE
-  newName: elarsaks/the-project
-  newTag: 37e4a8a0bfd5455149630e0413c5ecd17249272e
-- name: elarsaks/todo-backend
-  newName: elarsaks/todo-backend
-  newTag: 37e4a8a0bfd5455149630e0413c5ecd17249272e
-- name: elarsaks/todo-broadcaster
-  newName: elarsaks/todo-broadcaster
-  newTag: 37e4a8a0bfd5455149630e0413c5ecd17249272e
-- name: elarsaks/todo-generator
-  newName: elarsaks/todo-generator
-  newTag: 37e4a8a0bfd5455149630e0413c5ecd17249272e
-- name: elarsaks/todo-postgres-backup
-  newName: elarsaks/todo-postgres-backup
-  newTag: 37e4a8a0bfd5455149630e0413c5ecd17249272e
+  - project/overlays/staging
+  - project/overlays/production

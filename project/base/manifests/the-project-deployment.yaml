@@ -1,39 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: todo-backend
+  name: the-project
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:
-      app: todo-backend
+      app: the-project
   template:
     metadata:
       labels:
-        app: todo-backend
+        app: the-project
     spec:
-      initContainers:
-        - name: wait-for-postgres
-          image: postgres:18.0
-          command:
-            - sh
-            - -c
-            - until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 2; done
-          resources:
-            requests:
-              cpu: 5m
-              memory: 16Mi
-            limits:
-              cpu: 50m
-              memory: 32Mi
-          envFrom:
-            - configMapRef:
-                name: project-config
-            - secretRef:
-                name: todo-postgres-secret
+      volumes:
+        - name: image-cache
+          persistentVolumeClaim:
+            claimName: project-image-claim
       containers:
-        - name: todo-backend
-          image: elarsaks/todo-backend:2.10.0
+        - name: the-project
+          image: PROJECT/IMAGE
           imagePullPolicy: IfNotPresent
           resources:
             requests:
@@ -45,8 +32,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: project-config
-            - secretRef:
-                name: todo-postgres-secret
           ports:
             - containerPort: 3000
           readinessProbe:
@@ -60,16 +45,35 @@ spec:
               path: /healthz
               port: 3000
             initialDelaySeconds: 10
-            periodSeconds: 10
+            periodSeconds: 5
+          volumeMounts:
+            - name: image-cache
+              mountPath: /usr/src/app/files
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: todo-backend
+  name: the-project
 spec:
   type: ClusterIP
   selector:
-    app: todo-backend
+    app: the-project
   ports:
     - port: 3000
       targetPort: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: the-project
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: the-project
+                port:
+                  number: 3000
