@@ -1,12 +1,6 @@
 name: The Project GitOps
 
 on:
-  push:
-    branches:
-      - master
-      - main
-    tags:
-      - '**'
   workflow_dispatch:
     inputs:
       deploy_env:

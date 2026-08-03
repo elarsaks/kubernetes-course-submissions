@@ -99,14 +99,3 @@ jobs:
           else
             gh release create "$VERSION" --title "$title" --notes "$notes"
           fi
-
-      - name: Update exercise 4.10 production configuration
-        if: steps.version.outputs.version == '4.10'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          gh workflow run project-gitops.yaml \
-            --ref master \
-            --field deploy_env=production \
-            --field image_tag="$VERSION"
