@@ -4,6 +4,23 @@ This exercise installs Istio 1.30.3 in ambient mode on a local k3d cluster,
 deploys the Bookinfo sample application, and visualizes its service traffic with
 Prometheus and Kiali.
 
+## Reproduce the exercise
+
+From the repository root, run:
+
+```bash
+make -C istio setup
+make -C istio verify
+```
+
+`setup` creates the cluster and installs the pinned Istio, Gateway API,
+Bookinfo, Prometheus, and Kiali versions. It can be run again against the same
+cluster. `verify` checks rollout health, generates Bookinfo traffic, and asserts
+that Prometheus and Kiali received ambient mesh telemetry.
+
+The required local tools are Docker, k3d, kubectl, curl, tar, and jq. The
+sections below explain the commands executed by the automation.
+
 ## Create the k3d cluster
 
 Istio's ingress gateway conflicts with k3d's default Traefik installation, so
