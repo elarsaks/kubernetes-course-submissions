@@ -38,7 +38,7 @@ spec:
             - name: PORT
               value: "3000"
             - name: PING_PONG_URL
-              value: "http://ping-pong:3000/"
+              value: "http://pingpong.exercises.svc.cluster.local/"
             - name: MESSAGE
               valueFrom:
                 configMapKeyRef:
