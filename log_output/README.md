@@ -36,6 +36,21 @@ credentials. The Application uses automated sync, pruning, and self-healing.
 Ping-pong must be running in the `exercises` namespace because Log Output
 uses it for its readiness check.
 
+## Exercise 5.7 - Serverless Ping-pong
+
+Ping-pong runs as a Knative Serving `Service` named `pingpong`. Log Output
+calls it through the fully qualified in-cluster address
+`http://pingpong.exercises.svc.cluster.local/`, allowing Knative to scale the
+workload down when it is idle and activate it when a request arrives.
+
+Deploy the PostgreSQL dependency and the Knative service with:
+
+```bash
+kubectl apply -f ping_pong/manifests/postgres.yaml
+kubectl apply -f ping_pong/manifests/deployment.yaml
+kubectl wait --for=condition=Ready ksvc/pingpong -n exercises --timeout=10m
+```
+
 ## GitHub Actions configuration
 
 Add these repository secrets before pushing Log Output changes:
