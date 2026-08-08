@@ -1,0 +1,10 @@
+{
+  "name": "dummy-site-controller",
+  "version": "5.1.0",
+  "description": "DummySite custom controller for DevOps with Kubernetes exercise 5.1",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "license": "MIT"
+}
