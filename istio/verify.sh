@@ -7,6 +7,7 @@ BOOKINFO_PORT="${BOOKINFO_PORT:-18080}"
 KIALI_PORT="${KIALI_PORT:-20001}"
 PROMETHEUS_PORT="${PROMETHEUS_PORT:-19090}"
 REQUEST_COUNT="${REQUEST_COUNT:-200}"
+TRAFFIC_REQUEST_COUNT="${TRAFFIC_REQUEST_COUNT:-100}"
 
 for required_command in curl jq kubectl; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
@@ -23,10 +24,48 @@ kubectl wait --for=condition=available deployment --all -n default --timeout=120
 kubectl rollout status deployment/prometheus -n istio-system --timeout=120s
 kubectl rollout status deployment/kiali -n istio-system --timeout=120s
 kubectl wait --for=condition=Programmed gateway/bookinfo-gateway --timeout=120s
+kubectl wait --for=condition=Programmed gateway/waypoint --timeout=120s
 
 dataplane_mode="$(kubectl get namespace default -o jsonpath='{.metadata.labels.istio\.io/dataplane-mode}')"
 if [[ "$dataplane_mode" != "ambient" ]]; then
   echo "The default namespace is not enrolled in ambient mode." >&2
+  exit 1
+fi
+
+waypoint_for="$(kubectl get namespace default -o jsonpath='{.metadata.labels.istio\.io/use-waypoint}')"
+if [[ "$waypoint_for" != "waypoint" ]]; then
+  echo "The default namespace is not enrolled with the waypoint." >&2
+  exit 1
+fi
+
+allowed_body="$(kubectl exec deployment/curl -- \
+  curl -fsS http://productpage:9080/productpage)"
+if [[ "$allowed_body" != *"Simple Bookstore App"* ]]; then
+  echo "The curl service account could not GET the product page." >&2
+  exit 1
+fi
+
+delete_body="$(kubectl exec deployment/curl -- \
+  curl -sS -X DELETE http://productpage:9080/productpage)"
+if [[ "$delete_body" != *"RBAC: access denied"* ]]; then
+  echo "The waypoint did not deny DELETE for the curl service account." >&2
+  exit 1
+fi
+
+reviews_body="$(kubectl exec deployment/reviews-v1 -- \
+  curl -sS http://productpage:9080/productpage)"
+if [[ "$reviews_body" != *"RBAC: access denied"* ]]; then
+  echo "The waypoint did not deny the reviews-v1 service account." >&2
+  exit 1
+fi
+
+traffic_results="$(kubectl exec deployment/curl -- sh -c \
+  "for i in \$(seq 1 \"$TRAFFIC_REQUEST_COUNT\"); do curl -s http://productpage:9080/productpage | grep reviews-v.- | head -n 1; done")"
+reviews_v1_count="$(grep -c 'reviews-v1-' <<<"$traffic_results" || true)"
+reviews_v2_count="$(grep -c 'reviews-v2-' <<<"$traffic_results" || true)"
+
+if (( reviews_v1_count <= reviews_v2_count || reviews_v2_count < 1 )); then
+  echo "The reviews 90/10 route was not observed (v1=$reviews_v1_count, v2=$reviews_v2_count)." >&2
   exit 1
 fi
 
@@ -78,19 +117,25 @@ for _ in $(seq 1 "$REQUEST_COUNT"); do
   curl -fsS -o /dev/null "http://127.0.0.1:$BOOKINFO_PORT/productpage"
 done
 
-# Allow Prometheus to scrape the newly generated traffic.
-sleep 20
+telemetry_series=0
+graph_edges=0
+for _ in {1..12}; do
+  telemetry_series="$({
+    curl -fsSG \
+      --data-urlencode 'query=count(istio_tcp_sent_bytes_total)' \
+      "http://127.0.0.1:$PROMETHEUS_PORT/api/v1/query"
+  } | jq -r '.data.result[0].value[1] // "0"')"
 
-telemetry_series="$({
-  curl -fsSG \
-    --data-urlencode 'query=count(istio_tcp_sent_bytes_total)' \
-    "http://127.0.0.1:$PROMETHEUS_PORT/api/v1/query"
-} | jq -r '.data.result[0].value[1] // "0"')"
+  graph_edges="$({
+    curl -fsS \
+      "http://127.0.0.1:$KIALI_PORT/kiali/api/namespaces/graph?namespaces=default&graphType=workload&duration=120s&injectServiceNodes=true"
+  } | jq -r '.elements.edges | length')"
 
-graph_edges="$({
-  curl -fsS \
-    "http://127.0.0.1:$KIALI_PORT/kiali/api/namespaces/graph?namespaces=default&graphType=workload&duration=120s&injectServiceNodes=true"
-} | jq -r '.elements.edges | length')"
+  if (( telemetry_series >= 1 && graph_edges >= 1 )); then
+    break
+  fi
+  sleep 5
+done
 
 if (( telemetry_series < 1 )); then
   echo "Prometheus did not return Istio TCP telemetry." >&2
@@ -103,6 +148,8 @@ if (( graph_edges < 1 )); then
 fi
 
 echo "Bookinfo HTTP status: 200"
+echo "Authorization checks: GET allowed; DELETE and reviews-v1 denied"
+echo "Reviews traffic distribution: v1=$reviews_v1_count, v2=$reviews_v2_count"
 echo "Ambient telemetry series: $telemetry_series"
 echo "Kiali workload graph edges: $graph_edges"
 echo "Exercise 5.2 verification passed."
