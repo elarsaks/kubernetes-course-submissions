@@ -50,6 +50,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [4.8. The Project, Step 24](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.8)
 - [4.9. The Project, Step 25: Staging and Production GitOps Environments](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.9)
 - [4.10. The Project, Step 26: Separate Code and Configuration Repositories](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.10)
+- [5.1. DIY CRD & Controller](https://github.com/elarsaks/kubernetes-course-submissions/tree/5.1/dummy_site)
 
 ---
 
