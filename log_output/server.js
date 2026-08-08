@@ -7,6 +7,7 @@ const file = path.join(process.env.SHARED_DIR ?? "/usr/src/app/files", "log.txt"
 const informationFile = process.env.INFORMATION_FILE ?? "/usr/src/app/config/information.txt";
 const message = process.env.MESSAGE ?? "";
 const pingPongUrl = process.env.PING_PONG_URL ?? "http://ping-pong:3000/pingpong";
+const greeterUrl = process.env.GREETER_URL ?? "http://greeter-svc/";
 
 const getPingPongs = (callback) => {
   http.get(pingPongUrl, (response) => {
@@ -20,6 +21,22 @@ const getPingPongs = (callback) => {
       }
       const match = body.match(/pong\s+(\d+)/);
       callback(match ? null : new Error("Invalid ping-pong response"), match?.[1]);
+    });
+  }).on("error", callback);
+};
+
+const getGreeting = (callback) => {
+  http.get(greeterUrl, (response) => {
+    let body = "";
+    response.setEncoding("utf8");
+    response.on("data", (chunk) => { body += chunk; });
+    response.on("end", () => {
+      if (response.statusCode !== 200) {
+        callback(new Error(`Greeter returned HTTP ${response.statusCode}`));
+        return;
+      }
+      const greeting = body.trim();
+      callback(greeting ? null : new Error("Greeter returned an empty response"), greeting);
     });
   }).on("error", callback);
 };
@@ -43,13 +60,21 @@ const server = http.createServer((req, res) => {
         res.end("Ping-pong is not available yet\n");
         return;
       }
-      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end(
-        `file content: ${information.trimEnd()}\n` +
-        `env variable: MESSAGE=${message}\n` +
-        `${latestLogLine}\n` +
-        `Ping / Pongs: ${pingPongs}\n`,
-      );
+      getGreeting((greetingError, greeting) => {
+        if (greetingError) {
+          res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
+          res.end("Greeter is not available yet\n");
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(
+          `file content: ${information.trimEnd()}\n` +
+          `env variable: MESSAGE=${message}\n` +
+          `${latestLogLine}\n` +
+          `Ping / Pongs: ${pingPongs}\n` +
+          `Greeter: ${greeting}\n`,
+        );
+      });
     });
   }).catch(() => {
     res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });

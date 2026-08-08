@@ -52,6 +52,7 @@ This repository contains my submissions for the [**DevOps with Kubernetes** MOOC
 - [4.10. The Project, Step 26: Separate Code and Configuration Repositories](https://github.com/elarsaks/kubernetes-course-submissions/tree/4.10)
 - [5.1. DIY CRD & Controller](https://github.com/elarsaks/kubernetes-course-submissions/tree/5.1/dummy_site)
 - [5.2. Getting Started with Istio Service Mesh](https://github.com/elarsaks/kubernetes-course-submissions/tree/5.2/istio)
+- [5.3. Log App, the Service Mesh Edition](https://github.com/elarsaks/kubernetes-course-submissions/tree/5.3/service_mesh)
 
 ---
 

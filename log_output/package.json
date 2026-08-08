@@ -1,7 +1,7 @@
 {
     "name": "log_output",
-    "version": "3.2.0",
-    "description": "Log Output application for DevOps with Kubernetes exercise 3.2",
+    "version": "5.3.0",
+    "description": "Log Output application for DevOps with Kubernetes exercise 5.3",
     "main": "index.js",
     "scripts": {
         "start": "node index.js"
