@@ -29,12 +29,13 @@ spec:
       filters:
         - type: URLRewrite
           urlRewrite:
+            hostname: pingpong.exercises.192.168.144.3.sslip.io
             path:
               type: ReplacePrefixMatch
               replacePrefixMatch: /
       backendRefs:
-        - name: ping-pong
-          port: 3000
+        - name: pingpong
+          port: 80
     - matches:
         - path:
             type: PathPrefix
