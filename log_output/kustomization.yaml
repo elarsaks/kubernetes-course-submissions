@@ -8,4 +8,4 @@ resources:
 images:
 - name: elarsaks/log-output
   newName: elarsaks/log-output
-  newTag: 2ff9cddce88b469bee03f4fd6cb5d47bad76e7b1
+  newTag: 21d566378afcf64719e7f8b093049e5dbfbe7562
