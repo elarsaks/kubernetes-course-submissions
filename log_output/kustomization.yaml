@@ -2,10 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - manifests/configmap.yaml
-  - manifests/deployment.yaml
+- manifests/configmap.yaml
+- manifests/deployment.yaml
 
 images:
-  - name: elarsaks/log-output
-    newName: elarsaks/log-output
-    newTag: 3.2.0
+- name: elarsaks/log-output
+  newName: elarsaks/log-output
+  newTag: 99c10dfa60be65b6b707eea75c484e724dfd7ac0
